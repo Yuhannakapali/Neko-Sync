@@ -16,6 +16,10 @@ func NewServer(cfg *config.Config, db *sql.DB) *echo.Echo {
 	repo := persistence.NewUserRepo(db)
 	service := user.NewService(repo)
 
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Welcome to the NekoSync API!")
+	})
+
 	e.GET("/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
