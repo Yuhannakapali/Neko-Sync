@@ -2,8 +2,8 @@ package http
 
 import (
 	"database/sql"
-	"nekosync/internal/app/user"
 	"nekosync/internal/config"
+	"nekosync/internal/domain/user"
 	"nekosync/internal/infra/persistence"
 	"net/http"
 
@@ -14,7 +14,7 @@ func NewServer(cfg *config.Config, db *sql.DB) *echo.Echo {
 	e := echo.New()
 
 	repo := persistence.NewUserRepo(db)
-	service := userapp.NewService(repo)
+	service := user.NewService(repo)
 
 	e.GET("/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "OK")

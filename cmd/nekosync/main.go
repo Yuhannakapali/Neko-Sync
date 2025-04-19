@@ -13,5 +13,5 @@ func main() {
 	defer database.Close()
 
 	echo := http.NewServer(cfg, database)
-	echo.Start()
+	echo.Start(":" + cfg.Port)
 }
