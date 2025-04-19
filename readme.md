@@ -13,21 +13,21 @@ Neko-Sync is a Go-based application that allows users to stream movies and music
 ## Installation
 
 1. Clone the repository:
-  ```bash
-  git clone https://github.com/yourusername/Neko-Sync.git
-  ```
+   ```bash
+   git clone https://github.com/yourusername/Neko-Sync.git
+   ```
 2. Navigate to the project directory:
-  ```bash
-  cd Neko-Sync
-  ```
-3. Build the project:
-  ```bash
-  go build
-  ```
+   ```bash
+   cd Neko-Sync
+   ```
+3. Build the project using Make:
+   ```bash
+   make build
+   ```
 4. Run the application:
-  ```bash
-  ./Neko-Sync
-  ```
+   ```bash
+   ./bin/nekosync
+   ```
 
 ## Usage
 
