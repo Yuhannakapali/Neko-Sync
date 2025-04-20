@@ -95,3 +95,9 @@ Neko-Sync/
 ```
 
 This structure separates concerns and organizes the codebase into logical layers, making it easier to navigate and extend.
+
+## Database Design
+
+The database design for Neko-Sync is documented and visualized at the following URL:
+
+[https://dbdiagram.io/d/nekosync-680482671ca52373f59d8851](https://dbdiagram.io/d/nekosync-680482671ca52373f59d8851)
