@@ -21,7 +21,7 @@ func (r *UserRepo) Create(u *user.User) error {
 func (r *UserRepo) GetByID(id int) (*user.User, error) {
 	var u user.User
 	err := r.db.QueryRow("SELECT id, email, name FROM users WHERE id = $1", id).
-		Scan(&u.ID, &u.Email, &u.Name)
+		Scan(&u.Id, &u.Email, &u.Name)
 	if err != nil {
 		return nil, err
 	}
