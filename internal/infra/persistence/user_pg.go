@@ -13,8 +13,8 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 	return &UserRepo{db: db}
 }
 
-func (r *UserRepo) Create(u *user.User) error {
-	_, err := r.db.Exec("INSERT INTO users (email, name) VALUES ($1, $2)", u.Email, u.Name)
+func (repo *UserRepo) Create(u *user.User) error {
+	_, err := repo.db.Exec("INSERT INTO users (email, name) VALUES ($1, $2)", u.Email, u.Name)
 	return err
 }
 
