@@ -378,6 +378,57 @@ release: clean check test build-all ## Prepare release
 	@echo "$(CYAN)Built artifacts:$(NC)"
 	@ls -la $(BUILD_DIR)/
 
+.PHONY: tag
+tag: ## Create and push a new git tag (usage: make tag VERSION=v1.0.0)
+ifndef VERSION
+	@echo "$(RED)Error: VERSION is required. Usage: make tag VERSION=v1.0.0$(NC)"
+	@exit 1
+endif
+	@echo "$(CYAN)Creating tag $(VERSION)...$(NC)"
+	@git tag -a $(VERSION) -m "Release $(VERSION)"
+	@git push origin $(VERSION)
+	@echo "$(GREEN)Tag $(VERSION) created and pushed!$(NC)"
+
+.PHONY: release-dry-run
+release-dry-run: ## Show what would be released
+	@echo "$(CYAN)Release dry run:$(NC)"
+	@echo "Current version: $(VERSION)"
+	@echo "Git commit: $(GIT_COMMIT)"
+	@echo "Build time: $(BUILD_TIME)"
+	@echo ""
+	@echo "$(CYAN)Would build for platforms:$(NC)"
+	@echo "- Linux AMD64"
+	@echo "- Linux ARM64" 
+	@echo "- macOS AMD64"
+	@echo "- macOS ARM64"
+	@echo "- Windows AMD64"
+	@echo ""
+	@echo "$(CYAN)Docker images would be published to:$(NC)"
+	@echo "- ghcr.io/$(shell echo $(GIT_REMOTE) | sed 's/.*github.com[:\/]//' | sed 's/\.git$$//' | tr '[:upper:]' '[:lower:]')"
+
+.PHONY: release-notes
+release-notes: ## Generate release notes for the current version
+	@echo "$(CYAN)Generating release notes...$(NC)"
+	@PREV_TAG=$$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "Initial release"); \
+	echo "# Release Notes"; \
+	echo ""; \
+	echo "## Changes since $$PREV_TAG"; \
+	echo ""; \
+	git log --pretty=format:"- %s (%h)" --no-merges $$PREV_TAG..HEAD || git log --pretty=format:"- %s (%h)" --no-merges
+
+.PHONY: check-release-ready
+check-release-ready: ## Check if repository is ready for release
+	@echo "$(CYAN)Checking release readiness...$(NC)"
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "$(RED)Error: Working directory is not clean$(NC)"; \
+		git status --short; \
+		exit 1; \
+	fi
+	@if [ "$$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then \
+		echo "$(YELLOW)Warning: Not on main branch (current: $$(git rev-parse --abbrev-ref HEAD))$(NC)"; \
+	fi
+	@echo "$(GREEN)Repository is ready for release!$(NC)"
+
 # =============================================================================
 # Default target
 # =============================================================================
