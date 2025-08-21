@@ -1,0 +1,14 @@
+{
+  "root": true,
+  "ignorePatterns": ["node_modules", "dist", "build", ".next", "tmp", "coverage"],
+  "extends": ["eslint:recommended"],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "env": {
+    "node": true,
+    "es6": true
+  },
+  "rules": {}
+}

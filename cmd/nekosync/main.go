@@ -2,16 +2,16 @@ package main
 
 import (
 	"nekosync/internal/config"
-	"nekosync/internal/infrastructure/database"
+	"nekosync/internal/infra/db"
 	"nekosync/internal/interfaces/http"
 )
 
 func main() {
 	cfg := config.Load()
 
-	db := database.Init(cfg)
-	defer db.Close()
+	database := db.Init(cfg)
+	defer database.Close()
 
-	server := http.NewServer(cfg, db)
-	server.Start(":" + cfg.Port)
+	server := http.NewHTTPServer(cfg, database)
+	server.Logger.Fatal(server.Start(":" + cfg.Port))
 }
