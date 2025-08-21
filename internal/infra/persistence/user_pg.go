@@ -14,14 +14,14 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 }
 
 func (repo *UserRepo) Create(u *user.User) error {
-	_, err := repo.db.Exec("INSERT INTO users (email, name) VALUES ($1, $2)", u.Email, u.Name)
+	_, err := repo.db.Exec("INSERT INTO users (email, name) VALUES ($1, $2)", u.Email, u.Username)
 	return err
 }
 
 func (r *UserRepo) GetByID(id int) (*user.User, error) {
 	var u user.User
 	err := r.db.QueryRow("SELECT id, email, name FROM users WHERE id = $1", id).
-		Scan(&u.Id, &u.Email, &u.Name)
+		Scan(&u.ID, &u.Email, &u.Username)
 	if err != nil {
 		return nil, err
 	}

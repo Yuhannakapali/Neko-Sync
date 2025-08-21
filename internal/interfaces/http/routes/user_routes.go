@@ -21,7 +21,6 @@ func RegisterUserRoutes(e *echo.Echo, service user.Service) {
 
 		u := &user.User{
 			Email: req.Email,
-			Name:  req.Name,
 		}
 
 		if err := service.RegisterUser(u); err != nil {
