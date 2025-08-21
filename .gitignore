@@ -217,3 +217,5 @@ jwt.key
 # package-lock.json  # Uncomment if using yarn exclusively
 # yarn.lock          # Uncomment if using npm exclusively
 # pnpm-lock.yaml     # Uncomment if not using pnpm
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
