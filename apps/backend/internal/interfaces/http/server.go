@@ -2,16 +2,17 @@ package http
 
 import (
 	"database/sql"
+	"net/http"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+
 	"nekosync/internal/application/usecases/user"
 	"nekosync/internal/config"
 	"nekosync/internal/domain/services"
 	"nekosync/internal/infrastructure/repositories"
 	"nekosync/internal/interfaces/http/handlers"
 	customMiddleware "nekosync/internal/interfaces/http/middleware"
-	"net/http"
-
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 func NewHTTPServer(cfg *config.Config, db *sql.DB) *echo.Echo {

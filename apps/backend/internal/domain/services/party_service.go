@@ -295,12 +295,17 @@ func (s *PartyService) generateRoomCode() string {
 
 func (s *PartyService) generateUUID() string {
 	bytes := make([]byte, 16)
-	rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to a basic UUID if crypto/rand fails
+		return "00000000-0000-0000-0000-000000000000"
+	}
 	return hex.EncodeToString(bytes)
 }
 
 func (s *PartyService) randomInt(max int) int {
 	bytes := make([]byte, 1)
-	rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		return 0
+	}
 	return int(bytes[0]) % max
 }

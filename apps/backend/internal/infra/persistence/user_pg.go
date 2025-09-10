@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"database/sql"
+
 	"nekosync/internal/domain/user"
 )
 

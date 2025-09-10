@@ -1,8 +1,9 @@
 package content
 
 import (
-	"nekosync/internal/domain"
 	"time"
+
+	"nekosync/internal/domain"
 )
 
 // ========== SERIES / FRANCHISE ==========

@@ -165,33 +165,33 @@ bench: ## Run benchmarks
 lint: ## Run linter
 	@echo "$(CYAN)Running linter...$(NC)"
 	@if command -v golangci-lint > /dev/null 2>&1; then \
-		golangci-lint run; \
+		cd $(BACKEND_DIR) && golangci-lint run; \
 	else \
 		echo "$(YELLOW)Installing golangci-lint...$(NC)"; \
 		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
-		golangci-lint run; \
+		cd $(BACKEND_DIR) && $$(go env GOPATH)/bin/golangci-lint run; \
 	fi
 
 .PHONY: fmt
 fmt: ## Format code
 	@echo "$(CYAN)Formatting code...$(NC)"
-	@go fmt ./...
-	@go mod tidy
+	@cd $(BACKEND_DIR) && go fmt ./...
+	@cd $(BACKEND_DIR) && go mod tidy
 
 .PHONY: vet
 vet: ## Run go vet
 	@echo "$(CYAN)Running go vet...$(NC)"
-	@go vet ./...
+	@cd $(BACKEND_DIR) && go vet ./...
 
 .PHONY: sec
 sec: ## Run security checks
 	@echo "$(CYAN)Running security checks...$(NC)"
 	@if command -v gosec > /dev/null 2>&1; then \
-		gosec ./...; \
+		cd $(BACKEND_DIR) && gosec ./...; \
 	else \
 		echo "$(YELLOW)Installing gosec...$(NC)"; \
 		go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest; \
-		gosec ./...; \
+		cd $(BACKEND_DIR) && $$(go env GOPATH)/bin/gosec ./...; \
 	fi
 
 .PHONY: check

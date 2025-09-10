@@ -3,24 +3,25 @@ package user
 import (
 	"context"
 	"fmt"
+
 	"nekosync/internal/application/dto"
 	"nekosync/internal/domain/entities"
 	"nekosync/internal/domain/services"
 )
 
-// CreateUserUseCase handles user creation
+// CreateUserUseCase handles user creation.
 type CreateUserUseCase struct {
 	userService *services.UserService
 }
 
-// NewCreateUserUseCase creates a new CreateUserUseCase
+// NewCreateUserUseCase creates a new CreateUserUseCase.
 func NewCreateUserUseCase(userService *services.UserService) *CreateUserUseCase {
 	return &CreateUserUseCase{
 		userService: userService,
 	}
 }
 
-// Execute creates a new user
+// Execute creates a new user.
 func (uc *CreateUserUseCase) Execute(ctx context.Context, req dto.CreateUserRequest) (*dto.CreateUserResponse, error) {
 	user, err := uc.userService.CreateUser(ctx, req.Username, req.Email, req.Password)
 	if err != nil {
@@ -35,19 +36,19 @@ func (uc *CreateUserUseCase) Execute(ctx context.Context, req dto.CreateUserRequ
 	}, nil
 }
 
-// AuthenticateUserUseCase handles user authentication
+// AuthenticateUserUseCase handles user authentication.
 type AuthenticateUserUseCase struct {
 	userService *services.UserService
 }
 
-// NewAuthenticateUserUseCase creates a new AuthenticateUserUseCase
+// NewAuthenticateUserUseCase creates a new AuthenticateUserUseCase.
 func NewAuthenticateUserUseCase(userService *services.UserService) *AuthenticateUserUseCase {
 	return &AuthenticateUserUseCase{
 		userService: userService,
 	}
 }
 
-// Execute authenticates a user
+// Execute authenticates a user.
 func (uc *AuthenticateUserUseCase) Execute(ctx context.Context, req dto.LoginRequest) (*dto.LoginResponse, error) {
 	user, err := uc.userService.AuthenticateUser(ctx, req.Email, req.Password)
 	if err != nil {
@@ -71,19 +72,19 @@ func (uc *AuthenticateUserUseCase) Execute(ctx context.Context, req dto.LoginReq
 	}, nil
 }
 
-// UpdateProfileUseCase handles user profile updates
+// UpdateProfileUseCase handles user profile updates.
 type UpdateProfileUseCase struct {
 	userService *services.UserService
 }
 
-// NewUpdateProfileUseCase creates a new UpdateProfileUseCase
+// NewUpdateProfileUseCase creates a new UpdateProfileUseCase.
 func NewUpdateProfileUseCase(userService *services.UserService) *UpdateProfileUseCase {
 	return &UpdateProfileUseCase{
 		userService: userService,
 	}
 }
 
-// Execute updates a user's profile
+// Execute updates a user's profile.
 func (uc *UpdateProfileUseCase) Execute(ctx context.Context, userID string, req dto.UpdateProfileRequest) (*dto.UserProfileResponse, error) {
 	profile := &entities.UserProfile{
 		UserID:    entities.UUID(userID),
@@ -109,19 +110,19 @@ func (uc *UpdateProfileUseCase) Execute(ctx context.Context, userID string, req 
 	}, nil
 }
 
-// FollowUserUseCase handles user following
+// FollowUserUseCase handles user following.
 type FollowUserUseCase struct {
 	userService *services.UserService
 }
 
-// NewFollowUserUseCase creates a new FollowUserUseCase
+// NewFollowUserUseCase creates a new FollowUserUseCase.
 func NewFollowUserUseCase(userService *services.UserService) *FollowUserUseCase {
 	return &FollowUserUseCase{
 		userService: userService,
 	}
 }
 
-// Execute follows a user
+// Execute follows a user.
 func (uc *FollowUserUseCase) Execute(ctx context.Context, followerID string, req dto.FollowUserRequest) error {
 	err := uc.userService.FollowUser(ctx, entities.UUID(followerID), entities.UUID(req.UserID))
 	if err != nil {
@@ -147,19 +148,19 @@ func (uc *FollowUserUseCase) Execute(ctx context.Context, followerID string, req
 	return nil
 }
 
-// RegisterDeviceUseCase handles device registration
+// RegisterDeviceUseCase handles device registration.
 type RegisterDeviceUseCase struct {
 	userService *services.UserService
 }
 
-// NewRegisterDeviceUseCase creates a new RegisterDeviceUseCase
+// NewRegisterDeviceUseCase creates a new RegisterDeviceUseCase.
 func NewRegisterDeviceUseCase(userService *services.UserService) *RegisterDeviceUseCase {
 	return &RegisterDeviceUseCase{
 		userService: userService,
 	}
 }
 
-// Execute registers a new device for a user
+// Execute registers a new device for a user.
 func (uc *RegisterDeviceUseCase) Execute(ctx context.Context, userID string, req dto.RegisterDeviceRequest) (*dto.DeviceResponse, error) {
 	platform := entities.PlatformType(req.Platform)
 

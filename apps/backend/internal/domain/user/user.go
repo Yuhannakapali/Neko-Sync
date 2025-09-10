@@ -2,9 +2,10 @@ package user
 
 import (
 	"errors"
-	"nekosync/internal/domain/entities"
 	"strings"
 	"time"
+
+	"nekosync/internal/domain/entities"
 )
 
 type User struct {

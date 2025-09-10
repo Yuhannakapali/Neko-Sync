@@ -1,8 +1,9 @@
 package history
 
 import (
-	"nekosync/internal/domain"
 	"time"
+
+	"nekosync/internal/domain"
 )
 
 // ========== PROGRESS & HISTORY ==========

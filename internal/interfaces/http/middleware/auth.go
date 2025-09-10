@@ -7,8 +7,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// AuthMiddleware provides a simple authentication middleware
-// TODO: Replace with proper JWT authentication
+// AuthMiddleware provides a simple authentication middleware.
+// TODO: Replace with proper JWT authentication.
 func AuthMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {

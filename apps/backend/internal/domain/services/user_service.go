@@ -209,6 +209,9 @@ func (s *UserService) checkPassword(password, hash string) bool {
 
 func (s *UserService) generateUUID() string {
 	bytes := make([]byte, 16)
-	rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to a basic UUID if crypto/rand fails
+		return "00000000-0000-0000-0000-000000000000"
+	}
 	return hex.EncodeToString(bytes)
 }

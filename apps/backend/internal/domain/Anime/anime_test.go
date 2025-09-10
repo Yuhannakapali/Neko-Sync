@@ -4,20 +4,20 @@ import "testing"
 
 func TestAnime_Creation(t *testing.T) {
 	anime := &Anime{
-		Id:            "test-anime-id",
-		No_of_episode: 12,
-		Season:        "Spring",
-		Year:          "2024",
-		Status:        "completed",
-		Rating:        "8.5",
+		ID:          "test-anime-id",
+		NoOfEpisode: 12,
+		Season:      "Spring",
+		Year:        "2024",
+		Status:      "completed",
+		Rating:      "8.5",
 	}
 
-	if anime.Id != "test-anime-id" {
-		t.Errorf("Expected ID 'test-anime-id', got %s", anime.Id)
+	if anime.ID != "test-anime-id" {
+		t.Errorf("Expected ID 'test-anime-id', got %s", anime.ID)
 	}
 
-	if anime.No_of_episode != 12 {
-		t.Errorf("Expected 12 episodes, got %d", anime.No_of_episode)
+	if anime.NoOfEpisode != 12 {
+		t.Errorf("Expected 12 episodes, got %d", anime.NoOfEpisode)
 	}
 
 	if anime.Rating != "8.5" {
@@ -38,7 +38,7 @@ func TestAnime_ValidStatus(t *testing.T) {
 
 	for _, status := range validStatuses {
 		anime := &Anime{
-			Id:     "test-id",
+			ID:     "test-id",
 			Status: status,
 		}
 

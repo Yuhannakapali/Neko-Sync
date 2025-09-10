@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+
 	"nekosync/internal/domain/entities"
 )
 

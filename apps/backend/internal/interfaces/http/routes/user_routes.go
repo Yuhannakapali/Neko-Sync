@@ -1,10 +1,11 @@
 package routes
 
 import (
-	"nekosync/internal/domain/user"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+
+	"nekosync/internal/domain/user"
 )
 
 func RegisterUserRoutes(e *echo.Echo, service user.Service) {

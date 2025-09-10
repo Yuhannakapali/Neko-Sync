@@ -1,8 +1,9 @@
 package social
 
 import (
-	"nekosync/internal/domain"
 	"time"
+
+	"nekosync/internal/domain"
 )
 
 // ========== DISCUSSIONS / FORUM ==========

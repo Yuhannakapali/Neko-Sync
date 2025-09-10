@@ -7,11 +7,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Config holds the application configuration.
 type Config struct {
 	Port        string
 	DatabaseURL string
 }
 
+// Load loads configuration from environment variables.
 func Load() *Config {
 	_ = godotenv.Load()
 

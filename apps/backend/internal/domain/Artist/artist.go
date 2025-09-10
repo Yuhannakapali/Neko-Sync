@@ -1,10 +1,11 @@
-package Artist
+package artist
 
+// Artist represents an artist in the system.
 type Artist struct {
-	Id         string
-	Name       string
-	Bio        string
-	Avatar_url string
-	Created_at string
-	Updated_at string
+	ID        string `json:"id" db:"id"`
+	Name      string `json:"name" db:"name"`
+	Bio       string `json:"bio" db:"bio"`
+	AvatarURL string `json:"avatar_url" db:"avatar_url"`
+	CreatedAt string `json:"created_at" db:"created_at"`
+	UpdatedAt string `json:"updated_at" db:"updated_at"`
 }

@@ -2,6 +2,7 @@ package content
 
 import (
 	"errors"
+
 	"nekosync/internal/domain"
 )
 

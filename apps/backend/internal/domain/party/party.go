@@ -1,8 +1,9 @@
 package party
 
 import (
-	"nekosync/internal/domain"
 	"time"
+
+	"nekosync/internal/domain"
 )
 
 // ========== WATCH PARTIES ==========

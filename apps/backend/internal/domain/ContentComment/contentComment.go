@@ -1,11 +1,12 @@
-package ContentComment
+package contentcomment
 
+// ContentComment represents a comment on content.
 type ContentComment struct {
-	Id         string
-	User_id    string
-	Content_id string
-	Comment    string
-	Parent_id  string
-	Created_at string
-	Updated_at string
+	ID        string `json:"id" db:"id"`
+	UserID    string `json:"user_id" db:"user_id"`
+	ContentID string `json:"content_id" db:"content_id"`
+	Comment   string `json:"comment" db:"comment"`
+	ParentID  string `json:"parent_id" db:"parent_id"`
+	CreatedAt string `json:"created_at" db:"created_at"`
+	UpdatedAt string `json:"updated_at" db:"updated_at"`
 }

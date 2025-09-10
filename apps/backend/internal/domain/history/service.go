@@ -2,6 +2,7 @@ package history
 
 import (
 	"errors"
+
 	"nekosync/internal/domain"
 )
 
