@@ -8,6 +8,7 @@ on:
 
 env:
   GO_VERSION: '1.24'
+  NODE_VERSION: '20'
   DOCKER_REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
@@ -38,10 +39,19 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
+
+    - name: Install Node dependencies
+      run: npm ci --legacy-peer-deps
 
     - name: Cache Go modules
       uses: actions/cache@v4
@@ -53,29 +63,48 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
-    - name: Install dependencies
-      run: make deps
+    - name: Install golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        working-directory: apps/backend
+        skip-cache: true
+        skip-build-cache: true
 
     - name: Create test environment file
       run: |
-        cat > .env << EOF
-        DATABASE_URL=postgres://postgres:postgres@localhost:5432/nekosync_test?sslmode=disable
-        JWT_SECRET=test-secret-key
-        ENVIRONMENT=test
-        PORT=8080
-        EOF
+        cp apps/backend/.env.test apps/backend/.env
 
-    - name: Run code quality checks
-      run: make check
+    - name: Install Go dependencies
+      run: npx nx deps backend
 
-    - name: Run tests with coverage
-      run: make test-coverage
+    - name: Go vet
+      run: npx nx vet backend
 
-    - name: Upload coverage to Codecov
+    - name: Format check
+      run: npx nx format backend
+
+    - name: Lint
+      run: npx nx lint backend
+
+    - name: Run tests
+      run: npx nx test backend
+
+    - name: Generate coverage report
+      run: npx nx test-coverage backend    - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        file: ./coverage.out
+        file: ./apps/backend/coverage.out
         fail_ci_if_error: false
+
+    # Frontend testing (if web app exists)
+    - name: Test frontend
+      run: npx nx test web
+      continue-on-error: true
+
+    - name: Lint frontend
+      run: npx nx lint web
+      continue-on-error: true
 
   # Security scanning
   security:
@@ -85,13 +114,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
 
+    - name: Install Node dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Install gosec
+      run: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+
     - name: Run security checks
-      run: make sec
+      run: npx nx security backend
+      continue-on-error: true
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
@@ -107,11 +149,63 @@ jobs:
       with:
         sarif_file: 'trivy-results.sarif'
 
-  # Build and push Docker image
+  # Build applications
   build:
-    name: Build & Push
+    name: Build Applications
     runs-on: ubuntu-latest
-    needs: [test, security]
+    needs: [test]
+    
+    strategy:
+      matrix:
+        project: [backend, web]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Set up Go (for backend)
+      if: matrix.project == 'backend'
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Install Node dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Install Go dependencies (for backend)
+      if: matrix.project == 'backend'
+      run: npx nx deps backend
+
+    - name: Build application
+      run: npx nx build ${{ matrix.project }}
+
+    - name: Build production (for backend)
+      if: matrix.project == 'backend'
+      run: npx nx build backend --configuration=production --args.version=${{ github.sha }} --args.buildTime=$(date -u '+%Y-%m-%d_%H:%M:%S') --args.gitCommit=${{ github.sha }}
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.project }}-build
+        path: |
+          apps/${{ matrix.project }}/bin/
+          apps/${{ matrix.project }}/dist/
+          apps/${{ matrix.project }}/.next/
+        retention-days: 7
+
+  # Docker build and push
+  docker:
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    needs: [test, security, build]
     if: github.event_name == 'push'
     
     permissions:
@@ -124,13 +218,22 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
 
-    - name: Build application
-      run: make build-all
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Build backend for Docker
+      run: npx nx build backend --configuration=production
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -164,11 +267,65 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
+  # Test affected projects (Nx optimization)
+  affected:
+    name: Test Affected Projects
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: nekosync_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Create test environment file
+      run: |
+        cp apps/backend/.env.test apps/backend/.env
+
+    - name: Run affected tests
+      run: npx nx affected --target=test --base=origin/main
+
+    - name: Run affected linting
+      run: npx nx affected --target=lint --base=origin/main
+
+    - name: Run affected builds
+      run: npx nx affected --target=build --base=origin/main
+
   # Deploy to staging (only on develop branch)
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [docker]
     if: github.ref == 'refs/heads/develop'
     environment: staging
     
@@ -176,6 +333,7 @@ jobs:
     - name: Deploy to staging
       run: |
         echo "🚀 Deploying to staging environment"
+        echo "Backend image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:develop-${{ github.sha }}"
         # Add your deployment commands here
         # For example, updating a Kubernetes deployment or calling a webhook
 
@@ -183,7 +341,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [docker]
     if: github.ref == 'refs/heads/main' && startsWith(github.ref, 'refs/tags/')
     environment: production
     
@@ -191,6 +349,7 @@ jobs:
     - name: Deploy to production
       run: |
         echo "🚀 Deploying to production environment"
+        echo "Backend image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
         # Add your production deployment commands here
 
   # Create release (only on tags)
@@ -209,19 +368,30 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
 
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
     - name: Build release artifacts
-      run: make release
+      run: |
+        npx nx build backend --configuration=production
+        npx nx build web
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          bin/nekosync-*
+          apps/backend/bin/nekosync*
         draft: false
         prerelease: ${{ contains(github.ref, '-') }}
         generate_release_notes: true

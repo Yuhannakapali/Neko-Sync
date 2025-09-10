@@ -9,7 +9,11 @@
         "cacheableOperations": [
           "build",
           "test",
-          "lint"
+          "test-coverage",
+          "lint",
+          "vet",
+          "deps",
+          "security"
         ]
       }
     }
@@ -22,21 +26,41 @@
       "inputs": [
         "production",
         "^production"
-      ]
+      ],
+      "cache": true
     },
     "test": {
       "inputs": [
         "default",
         "^production",
         "{workspaceRoot}/jest.preset.js"
-      ]
+      ],
+      "cache": true
+    },
+    "test-coverage": {
+      "dependsOn": ["deps"],
+      "cache": true
     },
     "lint": {
       "inputs": [
         "default",
         "{workspaceRoot}/.eslintrc.json",
         "{workspaceRoot}/.eslintignore"
-      ]
+      ],
+      "cache": true
+    },
+    "vet": {
+      "dependsOn": ["deps"],
+      "cache": true
+    },
+    "serve": {
+      "dependsOn": ["deps"]
+    },
+    "dev": {
+      "dependsOn": ["deps"]
+    },
+    "docker-build": {
+      "dependsOn": ["build"]
     }
   },
   "namedInputs": {
@@ -47,14 +71,25 @@
     "production": [
       "default",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
+      "!{projectRoot}/**/*_test.go",
+      "!{projectRoot}/**/testdata/**/*",
       "!{projectRoot}/tsconfig.spec.json",
       "!{projectRoot}/jest.config.[jt]s",
       "!{projectRoot}/src/test-setup.[jt]s",
       "!{projectRoot}/test-setup.[jt]s",
       "!{projectRoot}/.eslintrc.json",
-      "!{projectRoot}/eslint.config.js"
+      "!{projectRoot}/eslint.config.js",
+      "!{projectRoot}/coverage.out",
+      "!{projectRoot}/coverage.html",
+      "!{projectRoot}/bin/**/*"
     ],
-    "sharedGlobals": []
+    "sharedGlobals": [
+      "{workspaceRoot}/.env",
+      "{workspaceRoot}/.env.example",
+      "{workspaceRoot}/makefile",
+      "{workspaceRoot}/Dockerfile",
+      "{workspaceRoot}/docker-compose.yml"
+    ]
   },
   "generators": {
     "@nx/react": {
