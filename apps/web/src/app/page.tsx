@@ -34,15 +34,14 @@ export default function HomePage() {
           <p className="text-xl text-gray-300 mb-8">
             Anime, manga, and content synchronization platform
           </p>
-          
+
           {loading ? (
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
           ) : (
-            <div className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${
-              health?.status === 'OK' 
-                ? 'bg-green-500 text-white' 
+            <div className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${health?.status === 'OK'
+                ? 'bg-green-500 text-white'
                 : 'bg-red-500 text-white'
-            }`}>
+              }`}>
               Backend: {health?.status}
             </div>
           )}
@@ -55,14 +54,14 @@ export default function HomePage() {
               Synchronized viewing experience with friends. Watch anime together in real-time.
             </p>
           </div>
-          
+
           <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 text-white">
             <h3 className="text-xl font-semibold mb-4">📱 Cross-Device Sync</h3>
             <p className="text-gray-300">
               Continue watching seamlessly across all your devices. Never lose your progress.
             </p>
           </div>
-          
+
           <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 text-white">
             <h3 className="text-xl font-semibold mb-4">🤝 Social Features</h3>
             <p className="text-gray-300">

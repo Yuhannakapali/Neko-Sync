@@ -35,7 +35,7 @@ func TestAnime_Creation(t *testing.T) {
 
 func TestAnime_ValidStatus(t *testing.T) {
 	validStatuses := []string{"ongoing", "completed", "upcoming", "cancelled"}
-	
+
 	for _, status := range validStatuses {
 		anime := &Anime{
 			Id:     "test-id",

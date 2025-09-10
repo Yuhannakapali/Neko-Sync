@@ -6,7 +6,9 @@
   "targets": {
     "build": {
       "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/bin"],
+      "outputs": [
+        "{projectRoot}/bin"
+      ],
       "options": {
         "command": "go build -o bin/nekosync ./cmd/nekosync",
         "cwd": "apps/backend"
@@ -82,5 +84,8 @@
       }
     }
   },
-  "tags": ["scope:backend", "type:app"]
+  "tags": [
+    "scope:backend",
+    "type:app"
+  ]
 }

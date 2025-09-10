@@ -2,19 +2,19 @@ package user
 
 import (
 	"errors"
+	"nekosync/internal/domain/entities"
 	"strings"
 	"time"
-	"nekosync/internal/domain/entities"
 )
 
 type User struct {
 	entities.BaseEntity
-	Username     string               `json:"username" db:"username"`
-	Email        string               `json:"email" db:"email"`
-	PasswordHash string               `json:"password_hash" db:"password_hash"`
-	AvatarURL    *string              `json:"avatar_url" db:"avatar_url"`
-	Role         entities.UserRole    `json:"role" db:"role"`
-	IsVerified   bool                 `json:"is_verified" db:"is_verified"`
+	Username     string            `json:"username" db:"username"`
+	Email        string            `json:"email" db:"email"`
+	PasswordHash string            `json:"password_hash" db:"password_hash"`
+	AvatarURL    *string           `json:"avatar_url" db:"avatar_url"`
+	Role         entities.UserRole `json:"role" db:"role"`
+	IsVerified   bool              `json:"is_verified" db:"is_verified"`
 }
 
 type UserProfile struct {

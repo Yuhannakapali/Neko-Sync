@@ -10,7 +10,7 @@ import (
 func TestSeries_Creation(t *testing.T) {
 	description := "Test series description"
 	coverURL := "https://example.com/cover.jpg"
-	
+
 	series := &Series{
 		BaseEntity: domain.BaseEntity{
 			ID:        domain.UUID("test-series-id"),
