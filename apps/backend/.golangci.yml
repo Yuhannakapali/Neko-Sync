@@ -1,9 +1,10 @@
-# golangci-lint configuration
+# golangci-lint configuration v2.4.0+
 # https://golangci-lint.run/usage/configuration/
 
 run:
   timeout: 5m
   tests: true
+  go: "1.24"
 
 issues:
   exclude-dirs:
@@ -48,6 +49,34 @@ linters:
     - unused
     - gci
     - gofmt
+    - gocritic
+    - revive
+    - misspell
+    - unconvert
+    - unparam
+    - whitespace
+  disable:
+    - deadcode  # deprecated
+    - varcheck  # deprecated
+    - structcheck  # deprecated
+    - golint  # deprecated
+    - interfacer  # deprecated
+    - scopelint  # deprecated
+    - maligned  # deprecated
+  presets:
+    - bugs
+    - comment
+    - complexity
+    - error
+    - format
+    - import
+    - metalinter
+    - module
+    - performance
+    - sql
+    - style
+    - test
+    - unused
     - goimports
     - revive
     - gosec
