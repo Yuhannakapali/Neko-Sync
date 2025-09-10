@@ -10,7 +10,8 @@ GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 
 # Directories
 BUILD_DIR := ./bin
-SRC_DIR := ./cmd/nekosync
+SRC_DIR := ./apps/backend/cmd/nekosync
+BACKEND_DIR := ./apps/backend
 MIGRATIONS_DIR := ./migrations
 DOCS_DIR := ./docs
 
@@ -66,7 +67,7 @@ dev: ## Start development server with hot reload
 .PHONY: dev-setup
 dev-setup: ## Setup development environment
 	@echo "$(CYAN)Setting up development environment...$(NC)"
-	@go mod download
+	@cd $(BACKEND_DIR) && go mod download
 	@go install github.com/air-verse/air@latest
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
@@ -91,17 +92,17 @@ env: ## Create .env file from template
 build: clean ## Build the application
 	@echo "$(CYAN)Building $(APP_NAME) $(VERSION)...$(NC)"
 	@mkdir -p $(BUILD_DIR)
-	@CGO_ENABLED=0 go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME) $(SRC_DIR)
+	@cd $(BACKEND_DIR) && CGO_ENABLED=0 go build $(LDFLAGS) -o ../../$(BUILD_DIR)/$(APP_NAME) ./cmd/nekosync
 	@echo "$(GREEN)Build complete: $(BUILD_DIR)/$(APP_NAME)$(NC)"
 
 .PHONY: build-all
 build-all: ## Build for multiple platforms
 	@echo "$(CYAN)Building for multiple platforms...$(NC)"
 	@mkdir -p $(BUILD_DIR)
-	@GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME)-linux-amd64 $(SRC_DIR)
-	@GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME)-darwin-amd64 $(SRC_DIR)
-	@GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME)-darwin-arm64 $(SRC_DIR)
-	@GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME)-windows-amd64.exe $(SRC_DIR)
+	@cd $(BACKEND_DIR) && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -o ../../$(BUILD_DIR)/$(APP_NAME)-linux-amd64 ./cmd/nekosync
+	@cd $(BACKEND_DIR) && GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -o ../../$(BUILD_DIR)/$(APP_NAME)-darwin-amd64 ./cmd/nekosync
+	@cd $(BACKEND_DIR) && GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build $(LDFLAGS) -o ../../$(BUILD_DIR)/$(APP_NAME)-darwin-arm64 ./cmd/nekosync
+	@cd $(BACKEND_DIR) && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -o ../../$(BUILD_DIR)/$(APP_NAME)-windows-amd64.exe ./cmd/nekosync
 	@echo "$(GREEN)Multi-platform build complete!$(NC)"
 
 .PHONY: run
@@ -112,7 +113,7 @@ run: build ## Build and run the application
 .PHONY: install
 install: ## Install the application to $GOPATH/bin
 	@echo "$(CYAN)Installing $(APP_NAME)...$(NC)"
-	@go install $(LDFLAGS) $(SRC_DIR)
+	@cd $(BACKEND_DIR) && go install $(LDFLAGS) ./cmd/nekosync
 
 # =============================================================================
 # Testing
@@ -121,13 +122,13 @@ install: ## Install the application to $GOPATH/bin
 .PHONY: test
 test: ## Run tests
 	@echo "$(CYAN)Running tests...$(NC)"
-	@go test -v ./...
+	@cd $(BACKEND_DIR) && go test -v ./...
 
 .PHONY: test-coverage
 test-coverage: ## Run tests with coverage
 	@echo "$(CYAN)Running tests with coverage...$(NC)"
-	@go test -v -race -coverprofile=coverage.out ./...
-	@go tool cover -html=coverage.out -o coverage.html
+	@cd $(BACKEND_DIR) && go test -v -race -coverprofile=coverage.out ./...
+	@cd $(BACKEND_DIR) && go tool cover -html=coverage.out -o coverage.html
 	@echo "$(GREEN)Coverage report generated: coverage.html$(NC)"
 
 .PHONY: test-watch
@@ -144,17 +145,17 @@ test-watch: ## Run tests in watch mode
 .PHONY: test-integration
 test-integration: ## Run integration tests
 	@echo "$(CYAN)Running integration tests...$(NC)"
-	@go test -v -tags=integration ./tests/integration/...
+	@cd $(BACKEND_DIR) && go test -v -tags=integration ./tests/integration/...
 
 .PHONY: test-unit
 test-unit: ## Run unit tests only
 	@echo "$(CYAN)Running unit tests...$(NC)"
-	@go test -v -short ./...
+	@cd $(BACKEND_DIR) && go test -v -short ./...
 
 .PHONY: bench
 bench: ## Run benchmarks
 	@echo "$(CYAN)Running benchmarks...$(NC)"
-	@go test -bench=. -benchmem ./...
+	@cd $(BACKEND_DIR) && go test -bench=. -benchmem ./...
 
 # =============================================================================
 # Code Quality
@@ -337,8 +338,8 @@ clean: ## Clean build artifacts and caches
 .PHONY: deps
 deps: ## Download dependencies
 	@echo "$(CYAN)Downloading dependencies...$(NC)"
-	@go mod download
-	@go mod tidy
+	@cd $(BACKEND_DIR) && go mod download
+	@cd $(BACKEND_DIR) && go mod tidy
 
 .PHONY: deps-update
 deps-update: ## Update dependencies
