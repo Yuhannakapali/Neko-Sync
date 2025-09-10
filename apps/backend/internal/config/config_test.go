@@ -45,9 +45,9 @@ func TestLoad(t *testing.T) {
 				os.Setenv("DATABASE_URL", originalDB)
 			}
 		}()
-		
+
 		os.Unsetenv("DATABASE_URL")
-		
+
 		// Note: This test would normally cause log.Fatal to exit the process
 		// In a real application, we might want to refactor config.Load() to return an error
 		// instead of calling log.Fatal directly

@@ -1,0 +1,229 @@
+{
+  "name": "backend",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/backend",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{workspaceRoot}/bin"
+      ],
+      "options": {
+        "command": "make build",
+        "cwd": "{workspaceRoot}"
+      },
+      "configurations": {
+        "production": {
+          "command": "make build"
+        }
+      },
+      "inputs": [
+        "{projectRoot}/cmd/**/*",
+        "{projectRoot}/internal/**/*",
+        "{projectRoot}/go.mod",
+        "{projectRoot}/go.sum"
+      ],
+      "cache": true
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make dev",
+        "cwd": "{workspaceRoot}"
+      },
+      "dependsOn": [
+        "deps"
+      ]
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make dev",
+        "cwd": "{workspaceRoot}"
+      },
+      "dependsOn": [
+        "deps"
+      ]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make test",
+        "cwd": "{workspaceRoot}"
+      },
+      "inputs": [
+        "{projectRoot}/cmd/**/*",
+        "{projectRoot}/internal/**/*",
+        "{projectRoot}/go.mod",
+        "{projectRoot}/go.sum",
+        "{projectRoot}/.env.test"
+      ],
+      "outputs": [],
+      "cache": true
+    },
+    "test-coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make test-coverage",
+        "cwd": "{workspaceRoot}"
+      },
+      "outputs": [
+        "{projectRoot}/coverage.out",
+        "{projectRoot}/coverage.html"
+      ],
+      "inputs": [
+        "{projectRoot}/cmd/**/*",
+        "{projectRoot}/internal/**/*",
+        "{projectRoot}/go.mod",
+        "{projectRoot}/go.sum",
+        "{projectRoot}/.env.test"
+      ],
+      "cache": true
+    },
+    "test-watch": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make test-watch",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test-unit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make test-unit",
+        "cwd": "{workspaceRoot}"
+      },
+      "cache": true
+    },
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make test-integration",
+        "cwd": "{workspaceRoot}"
+      },
+      "cache": true
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make lint",
+        "cwd": "{workspaceRoot}"
+      },
+      "inputs": [
+        "{projectRoot}/cmd/**/*",
+        "{projectRoot}/internal/**/*",
+        "{projectRoot}/.golangci.yml",
+        "{projectRoot}/go.mod",
+        "{projectRoot}/go.sum"
+      ],
+      "cache": true
+    },
+    "format": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make fmt",
+        "cwd": "{workspaceRoot}"
+      },
+      "inputs": [
+        "{projectRoot}/cmd/**/*",
+        "{projectRoot}/internal/**/*",
+        "{projectRoot}/go.mod",
+        "{projectRoot}/go.sum"
+      ],
+      "cache": true
+    },
+    "deps": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make deps",
+        "cwd": "{workspaceRoot}"
+      },
+      "inputs": [
+        "{projectRoot}/go.mod",
+        "{projectRoot}/go.sum"
+      ],
+      "outputs": [],
+      "cache": true
+    },
+    "docker-build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make docker-build",
+        "cwd": "{workspaceRoot}"
+      },
+      "dependsOn": [
+        "build"
+      ],
+      "inputs": [
+        "{projectRoot}/**/*",
+        "{workspaceRoot}/Dockerfile"
+      ],
+      "outputs": [],
+      "cache": true
+    },
+    "docker-up": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make docker-up",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "docker-down": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make docker-down",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "bench": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make bench",
+        "cwd": "{workspaceRoot}"
+      },
+      "cache": true
+    },
+    "migrate-up": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make migrate-up",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "migrate-down": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make migrate-down",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "clean": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make clean",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "vet": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make vet",
+        "cwd": "{workspaceRoot}"
+      },
+      "cache": true
+    },
+    "security": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "make sec",
+        "cwd": "{workspaceRoot}"
+      },
+      "cache": true
+    }
+  },
+  "tags": [
+    "scope:backend",
+    "type:app"
+  ]
+}

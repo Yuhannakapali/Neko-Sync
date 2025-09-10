@@ -7,7 +7,6 @@
     "test": "nx test",
     "lint": "nx lint",
     "serve": "nx serve",
-    
     "// Backend commands": "",
     "backend:dev": "nx dev backend",
     "backend:serve": "nx serve backend",
@@ -28,18 +27,15 @@
     "backend:migrate:up": "nx migrate-up backend",
     "backend:migrate:down": "nx migrate-down backend",
     "backend:bench": "nx bench backend",
-    
     "// Frontend commands": "",
     "web:dev": "nx serve web",
     "web:build": "nx build web",
     "web:test": "nx test web",
     "web:lint": "nx lint web",
     "web:export": "nx export web",
-    
     "// Mobile commands": "",
     "mobile:dev": "nx serve mobile",
     "mobile:build": "nx build mobile",
-    
     "// Workspace commands": "",
     "format": "nx format:write",
     "format:check": "nx format:check",
@@ -50,7 +46,6 @@
     "graph": "nx graph",
     "dep-graph": "nx dep-graph",
     "reset": "nx reset",
-    
     "// Development workflows": "",
     "dev": "nx run-many --target=serve --all --parallel",
     "build:all": "nx run-many --target=build --all --parallel",

@@ -38,7 +38,9 @@
       "cache": true
     },
     "test-coverage": {
-      "dependsOn": ["deps"],
+      "dependsOn": [
+        "deps"
+      ],
       "cache": true
     },
     "lint": {
@@ -50,17 +52,25 @@
       "cache": true
     },
     "vet": {
-      "dependsOn": ["deps"],
+      "dependsOn": [
+        "deps"
+      ],
       "cache": true
     },
     "serve": {
-      "dependsOn": ["deps"]
+      "dependsOn": [
+        "deps"
+      ]
     },
     "dev": {
-      "dependsOn": ["deps"]
+      "dependsOn": [
+        "deps"
+      ]
     },
     "docker-build": {
-      "dependsOn": ["build"]
+      "dependsOn": [
+        "build"
+      ]
     }
   },
   "namedInputs": {
