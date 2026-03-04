@@ -15,15 +15,15 @@ import (
 )
 
 func NewHTTPServer(cfg *config.Config, db *sql.DB) *echo.Echo {
-	e := echo.New()
+	server := echo.New()
 
 	// Middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	server.Use(middleware.Logger())
+	server.Use(middleware.Recover())
+	server.Use(middleware.CORS())
 
 	// Health check route
-	e.GET("/health", func(c echo.Context) error {
+	server.GET("/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
@@ -50,7 +50,7 @@ func NewHTTPServer(cfg *config.Config, db *sql.DB) *echo.Echo {
 	)
 
 	// Routes
-	api := e.Group("/api/v1")
+	api := server.Group("/api/v1")
 
 	// User routes
 	api.POST("/users/register", userHandler.CreateUser)
@@ -60,9 +60,9 @@ func NewHTTPServer(cfg *config.Config, db *sql.DB) *echo.Echo {
 	protected := api.Group("")
 	protected.Use(customMiddleware.AuthMiddleware())
 
-	protected.PUT("/users/profile", userHandler.UpdateProfile)
-	protected.POST("/users/follow", userHandler.FollowUser)
-	protected.POST("/users/devices", userHandler.RegisterDevice)
+	protected.PUT("/users/profile", userHandler.UpdateProfile);
+	protected.POST("/users/follow", userHandler.FollowUser);
+	protected.POST("/users/devices", userHandler.RegisterDevice);
 
-	return e
+	return server;
 }

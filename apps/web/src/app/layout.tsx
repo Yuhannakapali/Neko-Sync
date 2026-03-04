@@ -1,8 +1,9 @@
-import './globals.css';
+import React from "react";
+import "./globals.css";
 
 export const metadata = {
-  title: 'Neko-Sync',
-  description: 'Anime, manga, and content synchronization platform',
+  title: "Neko-Sync",
+  description: "Anime, manga, and content synchronization platform",
 };
 
 export default function RootLayout({
