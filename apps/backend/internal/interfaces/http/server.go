@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"nekosync/internal/application/usecases/user"
 	"nekosync/internal/config"
-	"nekosync/internal/domain/services"
+	userDomain "nekosync/internal/domain/user"
 	"nekosync/internal/infrastructure/repositories"
 	"nekosync/internal/interfaces/http/handlers"
 	customMiddleware "nekosync/internal/interfaces/http/middleware"
@@ -29,25 +29,25 @@ func NewHTTPServer(cfg *config.Config, db *sql.DB) *echo.Echo {
 	userRepo := repositories.NewUserRepository(db)
 	deviceRepo := repositories.NewDeviceRepository(db)
 	followRepo := repositories.NewFollowRepository(db)
-	notificationRepo := repositories.NewNotificationRepository(db)
+	notifRepo := repositories.NewNotificationRepository(db)
 
-	// Domain services
-	userService := services.NewUserService(userRepo, deviceRepo, followRepo, notificationRepo)
+	// Domain service
+	userService := userDomain.NewService(userRepo, deviceRepo, followRepo, notifRepo)
 
 	// Use cases
-	createUserUseCase := user.NewCreateUserUseCase(userService)
-	authenticateUserUseCase := user.NewAuthenticateUserUseCase(userService)
-	updateProfileUseCase := user.NewUpdateProfileUseCase(userService)
-	followUserUseCase := user.NewFollowUserUseCase(userService)
-	registerDeviceUseCase := user.NewRegisterDeviceUseCase(userService)
+	createUserUC := user.NewCreateUserUseCase(userService)
+	authenticateUC := user.NewAuthenticateUserUseCase(userService)
+	updateProfileUC := user.NewUpdateProfileUseCase(userService)
+	followUserUC := user.NewFollowUserUseCase(userService)
+	registerDeviceUC := user.NewRegisterDeviceUseCase(userService)
 
 	// Handlers
 	userHandler := handlers.NewUserHandler(
-		createUserUseCase,
-		authenticateUserUseCase,
-		updateProfileUseCase,
-		followUserUseCase,
-		registerDeviceUseCase,
+		createUserUC,
+		authenticateUC,
+		updateProfileUC,
+		followUserUC,
+		registerDeviceUC,
 	)
 
 	// Routes
