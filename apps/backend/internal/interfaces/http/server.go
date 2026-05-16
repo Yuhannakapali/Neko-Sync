@@ -17,30 +17,31 @@ import (
 func NewHTTPServer(cfg *config.Config, db *sql.DB) *echo.Echo {
 	server := echo.New()
 
-	// Middleware
 	server.Use(middleware.Logger())
 	server.Use(middleware.Recover())
 	server.Use(middleware.CORS())
 
-	// Health check route
 	server.GET("/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 
-	// Initialize repositories
+	// Repositories
 	userRepo := repositories.NewUserRepository(db)
+	deviceRepo := repositories.NewDeviceRepository(db)
+	followRepo := repositories.NewFollowRepository(db)
+	notificationRepo := repositories.NewNotificationRepository(db)
 
-	// Initialize domain services
-	userService := services.NewUserService(userRepo)
+	// Domain services
+	userService := services.NewUserService(userRepo, deviceRepo, followRepo, notificationRepo)
 
-	// Initialize use cases
+	// Use cases
 	createUserUseCase := user.NewCreateUserUseCase(userService)
 	authenticateUserUseCase := user.NewAuthenticateUserUseCase(userService)
 	updateProfileUseCase := user.NewUpdateProfileUseCase(userService)
 	followUserUseCase := user.NewFollowUserUseCase(userService)
 	registerDeviceUseCase := user.NewRegisterDeviceUseCase(userService)
 
-	// Initialize handlers
+	// Handlers
 	userHandler := handlers.NewUserHandler(
 		createUserUseCase,
 		authenticateUserUseCase,
@@ -52,17 +53,15 @@ func NewHTTPServer(cfg *config.Config, db *sql.DB) *echo.Echo {
 	// Routes
 	api := server.Group("/api/v1")
 
-	// User routes
 	api.POST("/users/register", userHandler.CreateUser)
 	api.POST("/users/login", userHandler.Login)
 
-	// Protected routes (require authentication middleware)
 	protected := api.Group("")
 	protected.Use(customMiddleware.AuthMiddleware())
 
-	protected.PUT("/users/profile", userHandler.UpdateProfile);
-	protected.POST("/users/follow", userHandler.FollowUser);
-	protected.POST("/users/devices", userHandler.RegisterDevice);
+	protected.PUT("/users/profile", userHandler.UpdateProfile)
+	protected.POST("/users/follow", userHandler.FollowUser)
+	protected.POST("/users/devices", userHandler.RegisterDevice)
 
-	return server;
+	return server
 }

@@ -69,14 +69,12 @@ type PartyMessage struct {
 }
 
 // Business Rules for Party domain
-func (wp *WatchParty) CanJoin(userID UUID) bool {
-	// Logic to check if user can join the party
-	return wp.IsActive && !wp.IsFull()
+func (wp *WatchParty) CanJoin(currentCount int) bool {
+	return wp.IsActive && !wp.IsFull(currentCount)
 }
 
-func (wp *WatchParty) IsFull() bool {
-	// This would need to be implemented with a repository to count current users
-	return false // Placeholder
+func (wp *WatchParty) IsFull(currentCount int) bool {
+	return currentCount >= wp.MaxUsers
 }
 
 func (wp *WatchParty) IsHost(userID UUID) bool {

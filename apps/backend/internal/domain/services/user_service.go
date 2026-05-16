@@ -6,153 +6,143 @@ import (
 	"encoding/hex"
 	"fmt"
 	"nekosync/internal/domain/entities"
+	domainerrors "nekosync/internal/domain/errors"
 	"nekosync/internal/domain/repositories"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-// UserService contains business logic for user operations
 type UserService struct {
-	userRepo repositories.UserRepository
+	userRepo         repositories.UserRepository
+	deviceRepo       repositories.DeviceRepository
+	followRepo       repositories.FollowRepository
+	notificationRepo repositories.NotificationRepository
 }
 
-// NewUserService creates a new UserService
-func NewUserService(userRepo repositories.UserRepository) *UserService {
+func NewUserService(
+	userRepo repositories.UserRepository,
+	deviceRepo repositories.DeviceRepository,
+	followRepo repositories.FollowRepository,
+	notificationRepo repositories.NotificationRepository,
+) *UserService {
 	return &UserService{
-		userRepo: userRepo,
+		userRepo:         userRepo,
+		deviceRepo:       deviceRepo,
+		followRepo:       followRepo,
+		notificationRepo: notificationRepo,
 	}
 }
 
-// CreateUser creates a new user with validation and password hashing
 func (s *UserService) CreateUser(ctx context.Context, username, email, password string) (*entities.User, error) {
-	// Validate input
 	if username == "" || email == "" || password == "" {
 		return nil, fmt.Errorf("username, email, and password are required")
 	}
 
-	// Check if user already exists
-	existingUser, _ := s.userRepo.GetByEmail(ctx, email)
-	if existingUser != nil {
-		return nil, fmt.Errorf("user with email %s already exists", email)
+	if existing, _ := s.userRepo.GetByEmail(ctx, email); existing != nil {
+		return nil, domainerrors.ErrUserAlreadyExists
 	}
 
-	existingUser, _ = s.userRepo.GetByUsername(ctx, username)
-	if existingUser != nil {
-		return nil, fmt.Errorf("user with username %s already exists", username)
+	if existing, _ := s.userRepo.GetByUsername(ctx, username); existing != nil {
+		return nil, domainerrors.ErrUserAlreadyExists
 	}
 
-	// Hash password
-	hashedPassword, err := s.hashPassword(password)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	// Create user
 	user := &entities.User{
 		BaseEntity: entities.BaseEntity{
-			ID:        entities.UUID(s.generateUUID()),
+			ID:        entities.UUID(generateID()),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
 		Username:     username,
 		Email:        email,
-		PasswordHash: hashedPassword,
+		PasswordHash: string(hashedPassword),
 		Role:         entities.UserRoleUser,
 		IsVerified:   false,
 	}
 
-	err = s.userRepo.Create(ctx, user)
-	if err != nil {
+	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
 	return user, nil
 }
 
-// AuthenticateUser validates user credentials
 func (s *UserService) AuthenticateUser(ctx context.Context, email, password string) (*entities.User, error) {
 	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, domainerrors.ErrInvalidCredentials
 	}
 
-	if !s.checkPassword(password, user.PasswordHash) {
-		return nil, fmt.Errorf("invalid credentials")
+	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
+		return nil, domainerrors.ErrInvalidCredentials
 	}
 
 	return user, nil
 }
 
-// UpdateProfile updates a user's profile information
 func (s *UserService) UpdateProfile(ctx context.Context, userID entities.UUID, profile *entities.UserProfile) error {
-	// Validate that the user exists
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("user not found: %w", err)
+		return domainerrors.ErrUserNotFound
 	}
 
-	// Ensure the profile belongs to the user
 	profile.UserID = user.ID
 
-	// Check if profile exists
-	existingProfile, _ := s.userRepo.GetProfile(ctx, userID)
-	if existingProfile == nil {
+	existing, _ := s.userRepo.GetProfile(ctx, userID)
+	if existing == nil {
 		return s.userRepo.CreateProfile(ctx, profile)
 	}
 
 	return s.userRepo.UpdateProfile(ctx, profile)
 }
 
-// FollowUser creates a follow relationship between users
 func (s *UserService) FollowUser(ctx context.Context, followerID, followingID entities.UUID) error {
 	if followerID == followingID {
-		return fmt.Errorf("users cannot follow themselves")
+		return domainerrors.ErrCannotFollowSelf
 	}
 
-	// Check if users exist
-	_, err := s.userRepo.GetByID(ctx, followerID)
-	if err != nil {
-		return fmt.Errorf("follower not found: %w", err)
+	if _, err := s.userRepo.GetByID(ctx, followerID); err != nil {
+		return domainerrors.ErrUserNotFound
 	}
 
-	_, err = s.userRepo.GetByID(ctx, followingID)
-	if err != nil {
-		return fmt.Errorf("user to follow not found: %w", err)
+	if _, err := s.userRepo.GetByID(ctx, followingID); err != nil {
+		return domainerrors.ErrUserNotFound
 	}
 
-	// Check if already following
-	isFollowing, err := s.userRepo.IsFollowing(ctx, followerID, followingID)
+	isFollowing, err := s.followRepo.IsFollowing(ctx, followerID, followingID)
 	if err != nil {
 		return fmt.Errorf("failed to check follow status: %w", err)
 	}
 
 	if isFollowing {
-		return fmt.Errorf("already following this user")
+		return domainerrors.ErrAlreadyFollowing
 	}
 
-	return s.userRepo.Follow(ctx, followerID, followingID)
+	return s.followRepo.Follow(ctx, followerID, followingID)
 }
 
-// UnfollowUser removes a follow relationship between users
 func (s *UserService) UnfollowUser(ctx context.Context, followerID, followingID entities.UUID) error {
-	isFollowing, err := s.userRepo.IsFollowing(ctx, followerID, followingID)
+	isFollowing, err := s.followRepo.IsFollowing(ctx, followerID, followingID)
 	if err != nil {
 		return fmt.Errorf("failed to check follow status: %w", err)
 	}
 
 	if !isFollowing {
-		return fmt.Errorf("not following this user")
+		return domainerrors.ErrNotFollowing
 	}
 
-	return s.userRepo.Unfollow(ctx, followerID, followingID)
+	return s.followRepo.Unfollow(ctx, followerID, followingID)
 }
 
-// CreateNotification creates a new notification for a user
 func (s *UserService) CreateNotification(ctx context.Context, userID entities.UUID, notificationType entities.NotificationType, title, message string, data map[string]interface{}) error {
 	notification := &entities.Notification{
 		BaseEntity: entities.BaseEntity{
-			ID:        entities.UUID(s.generateUUID()),
+			ID:        entities.UUID(generateID()),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
@@ -164,20 +154,17 @@ func (s *UserService) CreateNotification(ctx context.Context, userID entities.UU
 		Data:    data,
 	}
 
-	return s.userRepo.CreateNotification(ctx, notification)
+	return s.notificationRepo.Create(ctx, notification)
 }
 
-// RegisterDevice registers a new device for a user
 func (s *UserService) RegisterDevice(ctx context.Context, userID entities.UUID, deviceName string, platform entities.PlatformType) (*entities.UserDevice, error) {
-	// Deactivate all other devices for this user
-	err := s.userRepo.DeactivateUserDevices(ctx, userID)
-	if err != nil {
+	if err := s.deviceRepo.DeactivateAllForUser(ctx, userID); err != nil {
 		return nil, fmt.Errorf("failed to deactivate existing devices: %w", err)
 	}
 
 	device := &entities.UserDevice{
 		BaseEntity: entities.BaseEntity{
-			ID:        entities.UUID(s.generateUUID()),
+			ID:        entities.UUID(generateID()),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
@@ -188,27 +175,15 @@ func (s *UserService) RegisterDevice(ctx context.Context, userID entities.UUID, 
 		IsActive:   true,
 	}
 
-	err = s.userRepo.CreateDevice(ctx, device)
-	if err != nil {
+	if err := s.deviceRepo.Create(ctx, device); err != nil {
 		return nil, fmt.Errorf("failed to create device: %w", err)
 	}
 
 	return device, nil
 }
 
-// Private helper methods
-func (s *UserService) hashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(bytes), err
-}
-
-func (s *UserService) checkPassword(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
-}
-
-func (s *UserService) generateUUID() string {
-	bytes := make([]byte, 16)
-	rand.Read(bytes)
-	return hex.EncodeToString(bytes)
+func generateID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }
