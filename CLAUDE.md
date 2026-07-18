@@ -4,119 +4,81 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Neko-Sync is a media streaming platform for anime, manga, movies, and music with watch party functionality. It is an NX monorepo with a Go backend (`apps/backend`) and a Next.js frontend (`apps/web`).
+Neko-Sync is a media streaming platform for anime, manga, movies, and music with watch-party functionality. It is an **Nx monorepo** with two applications:
 
-## Commands
+- **`apps/backend`** — Go 1.26 API (Echo + PostgreSQL), Clean Architecture / DDD. Module `nekosync`.
+- **`apps/web`** — Next.js 15 / React 19 frontend, built via Nx.
 
-All Go commands must be run from `apps/backend/` — that is where `go.mod` lives (module `nekosync`).
+Each app has its **own `CLAUDE.md`** with the detail that matters when working inside it — read that one first when your task is scoped to a single app:
 
-### Backend (Go)
+- `apps/backend/CLAUDE.md` — Go layering, domain packages, wiring pattern, commands.
+- `apps/web/CLAUDE.md` — Next.js/Nx setup, ESLint flat config, proxy to the backend.
 
-```bash
-# Development with hot reload (from apps/backend/)
-cd apps/backend && air
+This root file covers the big picture and the monorepo-wide concerns that span both.
 
-# Build
-make build                          # outputs to ./bin/nekosync
+## How the pieces fit together
 
-# Run tests
-make test                           # all tests
-make test-unit                      # short tests only
-make test-coverage                  # generates coverage.html
+The web app is a thin client over the Go API. `apps/web/next.config.js` rewrites `/api/:path*` to `NEXT_PUBLIC_API_URL` (default `http://localhost:8080/api/v1`), so the browser calls same-origin `/api/...` and Next forwards to the backend's Echo server. There is no shared code between the two apps — they communicate only over HTTP. `libs/` is declared in the Nx workspace but currently empty.
 
-# Run a single test package
-cd apps/backend && go test -v ./internal/domain/entities/...
+The backend is layered `interfaces → application → domain ← infrastructure`, with the domain split into self-contained per-aggregate packages (`domain/user`, `domain/party`, `domain/content`, `domain/social`, `domain/history`, plus `domain/shared` for common types). `interfaces/http/server.go`'s `NewHTTPServer` is the composition root that wires repository → domain service → use case → handler. See `apps/backend/CLAUDE.md` for the full pattern.
 
-# Lint
-make lint                           # golangci-lint
-make fmt                            # gofmt + go mod tidy
-make vet                            # go vet
-
-# Run all checks
-make check                          # fmt + vet + lint + sec + test
-```
-
-### Frontend (Next.js via NX)
-
-```bash
-npx nx serve web                    # dev server on port 3000
-npx nx build web                    # production build
-npx nx lint web
-npx nx test web
-```
-
-### Database & Docker
-
-```bash
-# Start PostgreSQL + Redis + app
-make docker-up                      # docker-compose up -d
-
-# Database only (no Docker Compose)
-make db-up                          # starts postgres:15-alpine container
-
-# Migrations (requires golang-migrate)
-make migrate-up
-make migrate-down STEPS=1
-make migrate-create NAME=add_content_table
-
-# Setup dev environment (installs air, golangci-lint, migrate)
-make dev-setup
-```
-
-## Architecture
-
-### Repository layout
+## Repository layout
 
 ```
 Neko-Sync/
 ├── apps/
-│   ├── backend/                 # Go application (go.mod lives here)
-│   │   ├── cmd/nekosync/        # Active entrypoint (main.go)
+│   ├── backend/                 # Go app — go.mod + makefile live here
 │   │   └── internal/
-│   │       ├── config/          # Env-based config (PORT, DATABASE_URL)
-│   │       ├── domain/          # Business rules (see below)
-│   │       ├── application/     # Use cases + DTOs
-│   │       ├── infrastructure/  # Repository implementations (active)
-│   │       ├── infra/           # Older infra layer (db init used by root cmd)
-│   │       └── interfaces/http/ # Echo handlers, middleware, server setup
-│   └── web/                     # Next.js app (Tailwind, src/app router)
-├── cmd/nekosync/                # Root-level entrypoint (uses older infra paths)
+│   │       ├── config/          # env config (PORT, DATABASE_URL)
+│   │       ├── domain/          # per-aggregate packages (user, party, content, social, history, shared)
+│   │       ├── application/     # usecases/ + dto/
+│   │       ├── infrastructure/  # database/ + repositories/ (PostgreSQL)
+│   │       └── interfaces/http/ # Echo server, handlers, middleware
+│   └── web/                     # Next.js app (App Router, src/app/)
 ├── scripts/                     # init-db.sql, release.sh
 ├── docker-compose.yml           # App + PostgreSQL + Redis
-└── makefile                     # Primary task runner
+├── nx.json                      # Nx workspace config (npm preset)
+├── eslint.config.mjs            # root ESLint 9 flat config
+└── makefile                     # backend + docker + db task runner (run from repo root)
 ```
 
-### Backend Clean Architecture layers
+## Monorepo-wide commands
 
-Dependencies flow inward: `interfaces → application → domain ← infrastructure`
+Backend tasks go through the `makefile`; frontend tasks go through Nx. `node_modules` is not committed — run `npm install` before any Nx command. Per-app command detail lives in each app's `CLAUDE.md`.
 
-- **`domain/entities/`** — all domain types (`User`, `Content`, `Anime`, `Manga`, `Movie`, `Music`, `WatchParty`, `DeviceTransfer`, etc.) plus shared enums in `types.go`. This is the canonical entity source.
-- **`domain/repositories/`** — repository interfaces (contracts).
-- **`domain/services/`** — domain service implementations (e.g., `UserService`).
-- **`application/usecases/user/`** — use case structs that orchestrate domain services.
-- **`application/dto/`** — request/response types used by HTTP handlers.
-- **`infrastructure/repositories/`** — concrete PostgreSQL implementations of the repository interfaces.
-- **`interfaces/http/`** — Echo server setup (`server.go`), handlers, and auth middleware. Wire-up happens in `NewHTTPServer`: repository → domain service → use case → handler.
+```bash
+# Frontend (Nx)
+npm install
+npx nx serve web                    # dev server on :3000
+npx nx build web
 
-### Known architectural state
+# Backend (make; delegates into apps/backend)
+make build                          # NOTE: currently broken, see below
+make test
+make check                          # fmt + vet + lint + sec + test
 
-There are two overlapping infrastructure paths — `internal/infrastructure/` (active, used by `apps/backend/cmd`) and `internal/infra/` (used by the root-level `cmd/nekosync/main.go`). The makefile build target (`make build`) always builds from `apps/backend/`, so `apps/backend/cmd` is the canonical entrypoint. The root `cmd/` is a legacy artifact.
+# Database & Docker
+make docker-up                      # docker-compose up -d (app + PostgreSQL + Redis)
+make db-up                          # PostgreSQL only (postgres:15-alpine)
+make migrate-up                     # requires golang-migrate
+make migrate-down STEPS=1
+make migrate-create NAME=add_content_table
+make dev-setup                      # installs air, golangci-lint, migrate
+```
 
-There are also domain sub-packages (`domain/Anime/`, `domain/content/`, `domain/user/`, etc.) that pre-date the `domain/entities/` consolidation and contain duplicate entity definitions. New code should use `domain/entities/`.
+## Toolchain
 
-### Auth middleware
+Go **1.26** (matched by `go.mod` and all three `.github/workflows/*` pins), Node with **Nx 23**, Next **15**, React **19**, TypeScript **5.9**, ESLint **9** (flat config; no `.eslintrc.*` anywhere), Prettier **3**. CI (`.github/workflows/`) is Go-only — it does not build or test the frontend.
 
-`interfaces/http/middleware/auth.go` is a placeholder — it checks for a `Bearer` token but does not validate JWT. `user_id` is set to a hardcoded string. JWT implementation is pending.
+## Current known breakages
 
-### Key dependencies
+These are real, pre-existing, and cross-cutting enough to note at the top level. App-specific detail is in the respective app `CLAUDE.md`.
 
-| Package | Purpose |
-|---|---|
-| `github.com/labstack/echo/v4` | HTTP framework |
-| `github.com/jackc/pgx/v5/stdlib` | PostgreSQL driver (used via `database/sql`) |
-| `github.com/joho/godotenv` | `.env` loading |
-| `golang.org/x/crypto` | Password hashing |
+- **Backend has no entrypoint.** There is no `package main` / `cmd/nekosync` in the tree, so `make build` (which targets `./cmd/nekosync`) fails and the app is not runnable yet. `go build ./...` compiles the libraries but produces no binary. See `apps/backend/CLAUDE.md`.
+- **`nx test web` fails** — `apps/web/project.json` references `apps/web/jest.config.ts`, which does not exist.
+- **`go test ./internal/config/...` fails standalone** — `config.go` calls `log.Fatal` on a missing `DATABASE_URL`, killing the test binary. Test-design bug, not a regression.
+- **Deprecated Nx executors** — after the Nx 23 upgrade, `apps/web/project.json` still uses `@nx/eslint:lint` and `@nx/next:build`, which warn on every run and are removed in Nx 24. Migrate with `nx g @nx/eslint:convert-to-inferred` / `nx g @nx/next:convert-to-inferred` when ready.
 
-### Environment
+## Applications
 
-Copy `.env.example` to `.env` before running. Required variables: `DATABASE_URL`. Optional but expected: `PORT` (default `8080`), `JWT_SECRET`.
+`apps/` contains exactly two projects — `backend` and `web`. There is **no mobile app**; the former `react-native` dependencies and `mobile:*` scripts have been removed. If you need mobile later, scaffold a real Nx project rather than re-adding loose deps.
