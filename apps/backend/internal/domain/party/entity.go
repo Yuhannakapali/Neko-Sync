@@ -1,19 +1,20 @@
 package party
 
 import (
-	"nekosync/internal/domain/content"
 	"nekosync/internal/domain/shared"
 	"time"
 )
 
 // ========== WATCH PARTY ==========
 
+// WatchParty coordinates a shared *timeline* over a Work, not a shared stream: each
+// member's client resolves its own source (via domain/reference) and applies the
+// broadcast play/pause/seek locally.
 type WatchParty struct {
 	shared.BaseEntity
 	HostUserID  shared.UUID  `json:"host_user_id" db:"host_user_id"`
-	ContentID   shared.UUID  `json:"content_id" db:"content_id"`
-	EpisodeID   *shared.UUID `json:"episode_id" db:"episode_id"`
-	ChapterID   *shared.UUID `json:"chapter_id" db:"chapter_id"`
+	WorkID      shared.UUID  `json:"work_id" db:"work_id"`
+	ChildID     *shared.UUID `json:"child_id" db:"child_id"` // specific episode/chapter/track, if applicable
 	RoomCode    string       `json:"room_code" db:"room_code"`
 	Title       string       `json:"title" db:"title"`
 	Description *string      `json:"description" db:"description"`
@@ -78,15 +79,16 @@ type Message struct {
 
 // ========== DEVICE TRANSFER ==========
 
+// DeviceTransfer hands off in-progress playback from one device to another.
+// Position is kept as-is here; it folds into the unified Progress{Fraction, Locator}
+// model in a later step.
 type DeviceTransfer struct {
 	shared.BaseEntity
 	UserID       shared.UUID  `json:"user_id" db:"user_id"`
 	FromDeviceID shared.UUID  `json:"from_device_id" db:"from_device_id"`
 	ToDeviceID   shared.UUID  `json:"to_device_id" db:"to_device_id"`
-	ContentType  content.Type `json:"content_type" db:"content_type"`
-	ContentID    shared.UUID  `json:"content_id" db:"content_id"`
-	EpisodeID    *shared.UUID `json:"episode_id" db:"episode_id"`
-	ChapterID    *shared.UUID `json:"chapter_id" db:"chapter_id"`
+	WorkID       shared.UUID  `json:"work_id" db:"work_id"`
+	ChildID      *shared.UUID `json:"child_id" db:"child_id"`
 	Position     int          `json:"position" db:"position"`
 	IsCompleted  bool         `json:"is_completed" db:"is_completed"`
 }

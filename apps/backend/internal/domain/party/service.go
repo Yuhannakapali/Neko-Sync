@@ -4,26 +4,26 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"nekosync/internal/domain/content"
 	"nekosync/internal/domain/shared"
 	"nekosync/internal/domain/user"
+	"nekosync/internal/domain/work"
 	"time"
 )
 
 // ServiceInterface is the contract used by the application layer.
 type ServiceInterface interface {
-	CreateWatchParty(ctx context.Context, hostUserID, contentID shared.UUID, title string, maxUsers int, isPrivate bool, password *string) (*WatchParty, error)
+	CreateWatchParty(ctx context.Context, hostUserID, workID shared.UUID, title string, maxUsers int, isPrivate bool, password *string) (*WatchParty, error)
 	JoinWatchParty(ctx context.Context, userID shared.UUID, roomCode string, password *string) (*WatchParty, error)
 	LeaveWatchParty(ctx context.Context, userID, partyID shared.UUID) error
 	UpdatePlaybackState(ctx context.Context, partyID, userID shared.UUID, currentTime int, isPlaying bool, speed float64) error
 	SendMessage(ctx context.Context, partyID, userID shared.UUID, message string, timestamp int) error
-	CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID, toDeviceID, contentID shared.UUID, position int) (*DeviceTransfer, error)
+	CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID, toDeviceID, workID shared.UUID, position int) (*DeviceTransfer, error)
 }
 
 type Service struct {
 	partyRepo    Repository
 	transferRepo TransferRepository
-	contentRepo  content.Repository
+	workRepo     work.Repository
 	userRepo     user.Repository
 	deviceRepo   user.DeviceRepository
 }
@@ -31,26 +31,26 @@ type Service struct {
 func NewService(
 	partyRepo Repository,
 	transferRepo TransferRepository,
-	contentRepo content.Repository,
+	workRepo work.Repository,
 	userRepo user.Repository,
 	deviceRepo user.DeviceRepository,
 ) *Service {
 	return &Service{
 		partyRepo:    partyRepo,
 		transferRepo: transferRepo,
-		contentRepo:  contentRepo,
+		workRepo:     workRepo,
 		userRepo:     userRepo,
 		deviceRepo:   deviceRepo,
 	}
 }
 
-func (s *Service) CreateWatchParty(ctx context.Context, hostUserID, contentID shared.UUID, title string, maxUsers int, isPrivate bool, password *string) (*WatchParty, error) {
+func (s *Service) CreateWatchParty(ctx context.Context, hostUserID, workID shared.UUID, title string, maxUsers int, isPrivate bool, password *string) (*WatchParty, error) {
 	if _, err := s.userRepo.GetByID(ctx, hostUserID); err != nil {
 		return nil, user.ErrNotFound
 	}
 
-	if _, err := s.contentRepo.GetByID(ctx, contentID); err != nil {
-		return nil, content.ErrNotFound
+	if _, err := s.workRepo.GetByID(ctx, workID); err != nil {
+		return nil, work.ErrNotFound
 	}
 
 	p := &WatchParty{
@@ -60,7 +60,7 @@ func (s *Service) CreateWatchParty(ctx context.Context, hostUserID, contentID sh
 			UpdatedAt: time.Now(),
 		},
 		HostUserID: hostUserID,
-		ContentID:  contentID,
+		WorkID:     workID,
 		RoomCode:   generateRoomCode(),
 		Title:      title,
 		MaxUsers:   maxUsers,
@@ -212,7 +212,7 @@ func (s *Service) SendMessage(ctx context.Context, partyID, userID shared.UUID, 
 	})
 }
 
-func (s *Service) CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID, toDeviceID, contentID shared.UUID, position int) (*DeviceTransfer, error) {
+func (s *Service) CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID, toDeviceID, workID shared.UUID, position int) (*DeviceTransfer, error) {
 	devices, err := s.deviceRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user devices: %w", err)
@@ -232,9 +232,8 @@ func (s *Service) CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID
 		return nil, ErrInvalidDevices
 	}
 
-	c, err := s.contentRepo.GetByID(ctx, contentID)
-	if err != nil {
-		return nil, content.ErrNotFound
+	if _, err := s.workRepo.GetByID(ctx, workID); err != nil {
+		return nil, work.ErrNotFound
 	}
 
 	t := &DeviceTransfer{
@@ -246,8 +245,7 @@ func (s *Service) CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID
 		UserID:       userID,
 		FromDeviceID: fromDeviceID,
 		ToDeviceID:   toDeviceID,
-		ContentType:  c.Type,
-		ContentID:    contentID,
+		WorkID:       workID,
 		Position:     position,
 		IsCompleted:  false,
 	}
