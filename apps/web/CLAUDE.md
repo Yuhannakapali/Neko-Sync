@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working in the 
 
 ## Scope
 
-Next.js **15** app (App Router, `src/app/`) on React **19**, styled with Tailwind, built and run through **Nx 23**. TypeScript **5.9**. The app is a thin skeleton today: a landing page, root layout, and one API route.
+Next.js **15** app (App Router, `src/app/`) on React **19**, styled with Tailwind, built and run through **Nx 23.2.1**. TypeScript **5.9**. The app is a thin skeleton today: a landing page, root layout, and one API route.
 
 ## Commands
 
@@ -12,7 +12,8 @@ Run from the repo root (Nx resolves the `web` project). `node_modules` is **not 
 
 ```bash
 npm install                         # once, before any nx command
-npx nx serve web                    # dev server on http://localhost:3000
+npx nx serve web                    # dev server (next dev) on http://localhost:3000
+npx nx run web:start                # serve the production build (next start)
 npx nx build web                    # production build
 npx nx lint web                     # ESLint 9 (flat config)
 npx tsc --noEmit -p apps/web/tsconfig.json   # typecheck (see note below)
@@ -32,7 +33,7 @@ apps/web/
 ├── tsconfig.json           # paths: "@/*" → "./src/*"; moduleResolution "bundler"
 ├── tailwind.config.js
 ├── eslint.config.mjs       # ESLint 9 flat config (see below)
-└── project.json            # Nx targets: build/serve/export/test/lint
+└── project.json            # explicit Nx targets: export/test (+ serve port override)
 ```
 
 - **Backend proxy:** `next.config.js` rewrites `/api/:path*` to `NEXT_PUBLIC_API_URL` (default `http://localhost:8080/api/v1`). Client code calls same-origin `/api/...`; the rewrite forwards to the Go backend. Set `NEXT_PUBLIC_API_URL` to point elsewhere.
@@ -45,7 +46,7 @@ ESLint **9** with **flat config** only — there are no `.eslintrc.*` files. `ap
 
 ## Nx targets
 
-`project.json` defines `build`/`serve`/`export`/`test`/`lint`. `serve` runs on port 3000 and depends on `build`. These still use the classic `@nx/next:*` / `@nx/eslint:lint` executors, which **warn as deprecated** under Nx 23 and are removed in Nx 24 — see root `CLAUDE.md` for the `convert-to-inferred` migration.
+`build`, `serve`, `start`, `serve-static` and `lint` are **inferred** by the `@nx/next/plugin` and `@nx/eslint/plugin` entries in the root `nx.json` — they run `next build`, `next dev`, `next start` and `eslint .` in `apps/web`. Run `npx nx show project web` to see the resolved targets. `project.json` keeps only overrides (`serve` port 3000, extra `build` outputs) plus two executor-based targets: `export` (`@nx/next:export` — deprecated, removed in Nx 24, not handled by `convert-to-inferred`) and `test` (`@nx/jest:jest`, broken — see below). Don't reintroduce `@nx/next:build`/`@nx/next:server`/`@nx/eslint:lint`, and don't add a brace-glob `args` to `lint`: the task shell expands `**/*.{ts,tsx,js,jsx}` into separate patterns and ESLint fails on `**/*.jsx`.
 
 ## Current known breakages
 
