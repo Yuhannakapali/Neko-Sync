@@ -4,15 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Neko-Sync is a media streaming platform for anime, manga, movies, and music with watch-party functionality. It is an **Nx monorepo** with two applications:
+Neko-Sync is a media streaming platform for anime, manga, movies, and music with watch-party functionality. It is an **Nx monorepo** with three applications:
 
 - **`apps/backend`** — Go 1.26 API (Echo + PostgreSQL), Clean Architecture / DDD. Module `nekosync`.
 - **`apps/web`** — Next.js 15 / React 19 frontend, built via Nx.
+- **`apps/instance`** — the self-hosted Instance: Go `net/http` + SQLite (`modernc.org/sqlite`, no cgo), library scanner, `ffprobe`. Separate module `nekosync-instance`; it cannot import the Hub's `nekosync/internal/...`. It has an entrypoint (`cmd/nekosync-instance`) and runs.
 
 Each app has its **own `CLAUDE.md`** with the detail that matters when working inside it — read that one first when your task is scoped to a single app:
 
 - `apps/backend/CLAUDE.md` — Go layering, domain packages, wiring pattern, commands.
 - `apps/web/CLAUDE.md` — Next.js/Nx setup, ESLint flat config, proxy to the backend.
+- `apps/instance/CLAUDE.md` — Instance boundaries, scanner rules, remaining work in order.
 
 This root file covers the big picture and the monorepo-wide concerns that span both.
 
@@ -81,4 +83,4 @@ These are real, pre-existing, and cross-cutting enough to note at the top level.
 
 ## Applications
 
-`apps/` contains exactly two projects — `backend` and `web`. There is **no mobile app**; the former `react-native` dependencies and `mobile:*` scripts have been removed. If you need mobile later, scaffold a real Nx project rather than re-adding loose deps.
+`apps/` contains three projects — `backend` (Hub), `web`, and `instance`. `backend` and `instance` use `nx:run-commands` over `go`; CI runs `go vet` + `go test -race` for `instance` in its own job (with ffmpeg). **Step 3 of the build order (Instance skeleton) has started** in `apps/instance`: scanner → `MediaFile` in SQLite → read-only JSON API. The signed stream and the Hub connector are not built yet, and steps 1–2 are unfinished. There is **no mobile app**; the former `react-native` dependencies and `mobile:*` scripts have been removed. If you need mobile later, scaffold a real Nx project rather than re-adding loose deps.

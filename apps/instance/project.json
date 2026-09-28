@@ -1,0 +1,33 @@
+{
+  "name": "instance",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/instance",
+  "targets": {
+    "deps": {
+      "executor": "nx:run-commands",
+      "options": { "command": "go mod tidy", "cwd": "apps/instance" }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/bin"],
+      "options": {
+        "command": "CGO_ENABLED=0 go build -ldflags='-s -w' -o bin/nekosync-instance ./cmd/nekosync-instance",
+        "cwd": "apps/instance"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": { "command": "go run ./cmd/nekosync-instance", "cwd": "apps/instance" }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "go test -race ./...", "cwd": "apps/instance" }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "go vet ./... && golangci-lint run", "cwd": "apps/instance" }
+    }
+  },
+  "tags": ["scope:instance", "type:app"]
+}

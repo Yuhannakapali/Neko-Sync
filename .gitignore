@@ -84,6 +84,9 @@ apps/*/bin/
 # Executable files (Go binaries)
 nekosync
 nekosync-*
+# ...but not the Go entrypoint packages named after them
+!**/cmd/nekosync/
+!**/cmd/nekosync-*/
 *.bin
 
 # Platform-specific executables
@@ -120,6 +123,7 @@ bin/**
 
 # PostgreSQL
 *.sql
+!**/migrations/*.sql
 dumps/
 
 # ==============================================================================
