@@ -68,7 +68,7 @@ make dev-setup                      # installs air, golangci-lint, migrate
 
 ## Toolchain
 
-Go **1.26** (matched by `go.mod` and all three `.github/workflows/*` pins), Node with **Nx 23**, Next **15**, React **19**, TypeScript **5.9**, ESLint **9** (flat config; no `.eslintrc.*` anywhere), Prettier **3**. CI (`.github/workflows/`) is Go-only — it does not build or test the frontend.
+Go **1.26** (matched by `go.mod` and all three `.github/workflows/*` pins), Node with **Nx 23.2.1** (all `@nx/*` pinned to the same version), Next **15**, React **19**, TypeScript **5.9**, ESLint **9** (flat config; no `.eslintrc.*` anywhere), Prettier **3**. CI (`.github/workflows/`) is Go-only — it does not build or test the frontend.
 
 ## Current known breakages
 
@@ -77,7 +77,7 @@ These are real, pre-existing, and cross-cutting enough to note at the top level.
 - **Backend has no entrypoint.** There is no `package main` / `cmd/nekosync` in the tree, so `make build` (which targets `./cmd/nekosync`) fails and the app is not runnable yet. `go build ./...` compiles the libraries but produces no binary. See `apps/backend/CLAUDE.md`.
 - **`nx test web` fails** — `apps/web/project.json` references `apps/web/jest.config.ts`, which does not exist.
 - **`go test ./internal/config/...` fails standalone** — `config.go` calls `log.Fatal` on a missing `DATABASE_URL`, killing the test binary. Test-design bug, not a regression.
-- **Deprecated Nx executors** — after the Nx 23 upgrade, `apps/web/project.json` still uses `@nx/eslint:lint` and `@nx/next:build`, which warn on every run and are removed in Nx 24. Migrate with `nx g @nx/eslint:convert-to-inferred` / `nx g @nx/next:convert-to-inferred` when ready.
+- **One deprecated Nx executor left** — `build`/`serve`/`lint` in `apps/web/project.json` were converted to targets inferred by `@nx/next/plugin` and `@nx/eslint/plugin` (see `nx.json`), but `web:export` still uses `@nx/next:export`, which `convert-to-inferred` does not handle and Nx 24 removes.
 
 ## Applications
 
