@@ -31,26 +31,25 @@ make build                          # would output ./bin/nekosync
 
 ## Clean Architecture (DDD, per-aggregate)
 
-Dependencies flow inward: `interfaces → application → domain ← infrastructure`. Every layer imports the module as `nekosync/internal/...`.
+Dependencies flow inward: `interfaces → domain ← infrastructure`. Every layer imports the module as `nekosync/internal/...`.
 
 The domain is organized as **one self-contained package per aggregate** under `internal/domain/`, each bundling its own entity, repository interface, errors, and (where it has behavior) a service:
 
-- `domain/user/` — `entity.go`, `repository.go` (four interfaces: `Repository`, `DeviceRepository`, `FollowRepository`, `NotificationRepository`), `service.go` (`Service` + `ServiceInterface`, constructed via `NewService(userRepo, deviceRepo, followRepo, notifRepo)`), `errors.go`.
+- `domain/user/` — `entity.go`, `repository.go` (four interfaces: `Repository`, `DeviceRepository`, `FollowRepository`, `NotificationRepository`), `service.go` (`Service`, constructed via `NewService(userRepo, deviceRepo, followRepo, notifRepo)`), `errors.go`.
 - `domain/party/` — watch-party aggregate, also has a `service.go`.
-- `domain/content/`, `domain/social/`, `domain/history/` — entities + repository interfaces (no service yet).
+- `domain/work/`, `domain/reference/`, `domain/social/`, `domain/history/` — entities + repository interfaces (no service yet).
 - `domain/shared/` — cross-aggregate types and enums (`types.go`), e.g. `shared.UUID`, `PlatformType`, `NotificationType`. Import this rather than redefining shared types in an aggregate.
 
 Layer responsibilities:
 
-- **`application/usecases/<aggregate>/`** — thin use-case structs, one per operation (`CreateUserUseCase`, `AuthenticateUserUseCase`, …). Each takes the domain `ServiceInterface` in its constructor and exposes `Execute(ctx, req) (resp, error)`. Use cases translate DTOs ↔ domain calls; they hold no business logic.
-- **`application/dto/`** — request/response structs used at the HTTP boundary (`CreateUserRequest`, `LoginResponse`, …). Use cases speak DTOs; the domain never sees them.
 - **`infrastructure/repositories/`** — PostgreSQL implementations of the domain repository interfaces (`user_repository_impl.go`, `device_repository_impl.go`, `follow_repository_impl.go`, `notification_repository_impl.go`), constructed via `repositories.New*Repository(db)`.
 - **`infrastructure/database/`** — `postgres.go`, DB connection setup (`database/sql` + pgx stdlib driver).
-- **`interfaces/http/`** — Echo wiring. `server.go`'s `NewHTTPServer(cfg, db)` is the composition root: it builds repositories → domain service → use cases → handler, then registers routes. `handlers/` holds the Echo handlers; `middleware/` holds `auth.go`.
+- **`infrastructure/auth/`** — `JWTManager`, which issues and verifies HS256 access tokens (subject = user ID).
+- **`interfaces/http/`** — Echo wiring. `server.go`'s `NewHTTPServer(cfg, db)` is the composition root: it builds repositories → domain service → handler, then registers routes. `handlers/` holds the Echo handlers and their request/response DTOs (`user_dto.go`); handlers call the domain `Service` directly and map domain types to DTOs. `middleware/` holds `auth.go`.
 
 ### Wiring pattern (follow this when adding a feature)
 
-`NewHTTPServer` shows the canonical flow. To add an endpoint: define the domain method on the aggregate's `Service` (+ interface), add a use case in `application/usecases/<aggregate>/`, add request/response DTOs, add a handler method, then wire repo → service → use case → handler and register the route in `server.go`. Protected routes go under the `protected` group guarded by `customMiddleware.AuthMiddleware()`.
+`NewHTTPServer` shows the canonical flow. To add an endpoint: add the method to the aggregate's `Service` (and to a repository if it needs new queries), add request/response DTOs next to the handler, add the handler method, and register the route in `server.go`. Protected routes go under the `protected` group guarded by `customMiddleware.AuthMiddleware(tokens)`, which sets `user_id` from the verified token. Do not add a use-case layer back unless an operation genuinely spans several services.
 
 ## Routes
 

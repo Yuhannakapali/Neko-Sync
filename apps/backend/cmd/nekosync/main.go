@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
-	"nekosync/internal/config"
-	"nekosync/internal/infrastructure/database"
-	"nekosync/internal/interfaces/http"
+	"nekosync/internal/app"
+	"nekosync/internal/platform/config"
+	"nekosync/internal/platform/postgres"
 )
 
 func main() {
@@ -14,12 +14,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err := database.Init(cfg)
+	db, err := postgres.Init(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	server := http.NewHTTPServer(cfg, db)
+	server := app.NewServer(cfg, db)
 	server.Logger.Fatal(server.Start(":" + cfg.Port))
 }
