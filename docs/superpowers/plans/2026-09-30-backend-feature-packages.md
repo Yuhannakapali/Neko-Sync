@@ -45,6 +45,7 @@ apps/backend/
 
   Nothing imports "upward", so collapsing each feature's layers into one
   package cannot create an import cycle. `party → user/work` stays legal.
+
 - Interfaces with one implementation (`user.Repository`, `DeviceRepository`,
   `FollowRepository`, `NotificationRepository`) merge into one `Store`
   interface declared where it is consumed (`user/store.go`). It stays an
@@ -52,20 +53,20 @@ apps/backend/
 
 ## File map
 
-| From | To |
-| --- | --- |
-| `internal/config/*` | `internal/platform/config/*` |
-| `infrastructure/database/postgres.go` | `platform/postgres/postgres.go` |
-| `infrastructure/auth/*` | `platform/auth/*` |
-| `interfaces/http/middleware/*` | `platform/httpx/*` |
-| `domain/shared/*` | `platform/id/*` (`shared.UUID` → `id.UUID`) |
-| `domain/user/{entity,errors,service}.go` + tests | `user/{user,errors,service}.go` |
-| `domain/user/repository.go` | `user/store.go` (one `Store` interface) |
-| `infrastructure/repositories/*_impl.go` | `user/postgres.go` (one `pgStore` type) |
-| `interfaces/http/handlers/user_handler.go` | `user/http.go` (+ `Routes(public, protected *echo.Group)`) |
-| `interfaces/http/handlers/user_dto.go` | `user/dto.go` |
-| `interfaces/http/server.go` | `app/server.go` |
-| `domain/{party,work,reference,social,history}/*` | `{party,work,...}/*` |
+| From                                             | To                                                         |
+| ------------------------------------------------ | ---------------------------------------------------------- |
+| `internal/config/*`                              | `internal/platform/config/*`                               |
+| `infrastructure/database/postgres.go`            | `platform/postgres/postgres.go`                            |
+| `infrastructure/auth/*`                          | `platform/auth/*`                                          |
+| `interfaces/http/middleware/*`                   | `platform/httpx/*`                                         |
+| `domain/shared/*`                                | `platform/id/*` (`shared.UUID` → `id.UUID`)                |
+| `domain/user/{entity,errors,service}.go` + tests | `user/{user,errors,service}.go`                            |
+| `domain/user/repository.go`                      | `user/store.go` (one `Store` interface)                    |
+| `infrastructure/repositories/*_impl.go`          | `user/postgres.go` (one `pgStore` type)                    |
+| `interfaces/http/handlers/user_handler.go`       | `user/http.go` (+ `Routes(public, protected *echo.Group)`) |
+| `interfaces/http/handlers/user_dto.go`           | `user/dto.go`                                              |
+| `interfaces/http/server.go`                      | `app/server.go`                                            |
+| `domain/{party,work,reference,social,history}/*` | `{party,work,...}/*`                                       |
 
 ## Steps (one commit each, `make test` green after every one)
 

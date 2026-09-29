@@ -13,7 +13,8 @@ Go application, module `nekosync`, requiring **Go 1.26**. Run Go commands from t
 air
 
 # Tests
-make test                           # all tests
+make test                           # all tests (Postgres tests skip)
+make test-integration               # all tests incl. Postgres, in a throwaway container on :55432
 make test-unit                      # short tests only (-short)
 make test-coverage                  # generates coverage.html
 go test -v ./internal/user/...   # a single package
@@ -40,11 +41,13 @@ internal/
     postgres/               postgres.Init(cfg) → (*sql.DB, error)
     auth/                   JWTManager: Issue / Verify HS256 tokens (subject = user ID)
     httpx/                  AuthMiddleware(verifier): sets "user_id" from a verified token
-    entity/                 entity.UUID, entity.BaseEntity
+    entity/                 entity.UUID, entity.NewUUID(), entity.BaseEntity
+    postgres/pgtest/        pgtest.Open(t): integration-test DB (skips without TEST_DATABASE_URL)
+  progress/                 Progress{Fraction 0–1, Locator}: the one progress model
   user/                     the only fully wired feature (see below)
   party/                    entity, errors, repository iface, service — not wired to HTTP
-  work/, reference/         Hub metadata + ContentReference registry: entity, errors, repository iface
-  social/, history/         entity + repository iface only
+  work/, reference/         Hub catalog + ContentReference registry, with Postgres repos (no HTTP yet)
+  social/, history/         entity + repository iface only (history is Entry{WorkID, ChildID, Progress})
 ```
 
 A feature package owns everything about that feature. `user/` contains:
@@ -72,16 +75,28 @@ All in the feature's folder: add the method to `service.go` (and a query to the 
 
 ## Key dependencies
 
-| Package | Purpose |
-|---|---|
-| `github.com/labstack/echo/v4` | HTTP framework |
+| Package                          | Purpose                                |
+| -------------------------------- | -------------------------------------- |
+| `github.com/labstack/echo/v4`    | HTTP framework                         |
 | `github.com/jackc/pgx/v5/stdlib` | PostgreSQL driver (via `database/sql`) |
-| `github.com/joho/godotenv` | `.env` loading |
-| `golang.org/x/crypto` | Password hashing |
-| `github.com/golang-jwt/jwt/v5` | Access tokens |
+| `github.com/joho/godotenv`       | `.env` loading                         |
+| `golang.org/x/crypto`            | Password hashing                       |
+| `github.com/golang-jwt/jwt/v5`   | Access tokens                          |
+
+## Database & migrations
+
+Schema lives in versioned golang-migrate files under the repo-root `migrations/`
+(`000001_users`, `000002_catalog`). `make migrate-up` applies them; the compose
+`migrate` service does the same. `scripts/init-db.sql` no longer creates schema.
+`000001` is guarded so it also applies cleanly to databases created by the old
+`init-db.sql`. New IDs must come from `entity.NewUUID()` — the canonical form
+Postgres returns — or they change shape between write and read.
+
+Postgres-backed tests call `pgtest.Open(t)`, which truncates `users` and `works`
+(cascading). Only ever point `TEST_DATABASE_URL` at a throwaway database.
 
 ## Current known gaps
 
-- No migrations beyond `scripts/init-db.sql` (users only); `party`, `work`, `reference`, `social`, `history` have no tables or repository implementations.
-- `RegisterDevice` is transactional (`ReplaceActive`), but nothing else uses transactions yet.
+- `party`, `social` and `history` have no tables or repository implementations yet.
+- `work` and `reference` have repositories but no HTTP endpoints.
 - Handlers return raw error strings to clients and do no input validation (`// TODO: Add validation`).

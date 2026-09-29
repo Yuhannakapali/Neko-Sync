@@ -3,57 +3,42 @@
 Guidance for Claude Code (claude.ai/code) working in this repository.
 
 > **Read this first, and believe the "Reality check" section over any other doc in
-> the repo.** `readme.md` and `ARCHITECTURE.md` are both stale (see Doc drift).
-> Last verified against the tree: 2026-09-10, commit `da1996a`.
+> the repo.** `readme.md` is stale (see Doc drift).
+> Last verified against the tree: 2026-09-30.
 
 ## Overview
 
 Neko-Sync is an **Nx monorepo** with three Go/TypeScript applications:
 
-- **`apps/backend`** — Go API (Echo + PostgreSQL), Clean Architecture / DDD. Module `nekosync`.
+- **`apps/backend`** — the Hub: Go API (Echo + PostgreSQL), one package per feature. Module `nekosync`.
 - **`apps/web`** — Next.js 15 / React 19 frontend, built via Nx.
 - **`apps/instance`** — the self-hosted Instance: Go `net/http` + SQLite (`modernc.org/sqlite`,
   no cgo), library scanner, `ffprobe`. Separate module `nekosync-instance`; it cannot import
-  the Hub's `nekosync/internal/...`. Unlike the Hub it **has** an entrypoint
-  (`cmd/nekosync-instance`) and runs.
+  the Hub's `nekosync/internal/...`. Entrypoint `cmd/nekosync-instance`.
 
 Each app has its own `CLAUDE.md` with app-scoped detail:
 
-- `apps/backend/CLAUDE.md` — Go layering, domain packages, wiring pattern, commands.
+- `apps/backend/CLAUDE.md` — package layout, adding an endpoint, migrations, tests.
 - `apps/web/CLAUDE.md` — Next.js/Nx setup, ESLint flat config, proxy to the backend.
 - `apps/instance/CLAUDE.md` — Instance boundaries, scanner rules, remaining work in order.
 
 ## Reality check — what actually runs today
 
-**Nothing runs end-to-end.** This is the single most important fact about the repo,
-and most other problems descend from it.
+**The Hub builds, runs and serves its API; the Hub ↔ Instance loop does not exist yet.**
 
-- The Hub has **no `package main`** (`apps/instance` does; see Overview). `apps/backend/cmd/nekosync/`
-  does not exist, though `makefile`, `Dockerfile:23`, `.air.toml:11` and
-  `apps/backend/project.json` all target it.
-- `interfaces/http.NewHTTPServer`, `infrastructure/database.Init` and `config.Load`
-  are **called from nowhere**. The composition root is unreachable code.
-- Consequently `make build`, `make build-all`, `make install`, `make dev` (air),
-  `docker build`, `docker compose up`, and `nx build backend` all fail.
-- `go build ./...` from `apps/backend` **does** succeed — it compiles the libraries
-  and produces no binary. A green `go build` here means nothing about runnability.
-
-An entrypoint did exist and was deleted in `099474f`. It was 12 lines. Restoring it
-(with `internal/infra/db` → `internal/infrastructure/database`) is the highest-leverage
-change available in this repo.
-
-**The API surface that exists** (`interfaces/http/server.go`), once wired:
-`GET /health`, `POST /api/v1/users/register`, `POST /api/v1/users/login`, and behind
-placeholder auth: `PUT /api/v1/users/profile`, `POST /api/v1/users/follow`,
-`POST /api/v1/users/devices`. That is the whole API. No party, work, reference,
-social or history endpoints exist.
-
-**Auth is decorative — do not treat any endpoint as protected.**
-`interfaces/http/middleware/auth.go:32` accepts _any_ non-empty `Bearer` token and
-sets a hardcoded `c.Set("user_id", "placeholder-user-id")`.
-`application/usecases/user/user_usecases.go:48` returns the literal string
-`"jwt-token-placeholder"` as the login token. `JWT_SECRET` appears in `.env.example`
-but is never read by any Go code.
+- `apps/backend/cmd/nekosync` is the entrypoint. `make build`, `make dev` (air),
+  `docker build` and `nx build backend` work. Verified 2026-09-30: register → login →
+  JWT-protected device/profile calls against a migrated Postgres.
+- **The API surface** (`internal/app/server.go` + `internal/user/http.go`): `GET /health`,
+  `POST /api/v1/users/register`, `POST /api/v1/users/login`, and JWT-protected
+  `PUT /api/v1/users/profile`, `POST /api/v1/users/follow`, `POST /api/v1/users/devices`.
+  That is the whole API. `work` and `reference` have Postgres repositories but no
+  endpoints; party, social and history have neither.
+- **Auth is real.** Login issues an HS256 JWT signed with `JWT_SECRET` (required at
+  startup); `platform/httpx.AuthMiddleware` rejects anything it cannot verify and sets
+  `user_id` from the token subject.
+- The Instance scans and serves a read-only JSON API, but has no stream and no Hub
+  connector, so nothing has proven the edge-resolves-content loop.
 
 ## North star — Hub + Instance
 
@@ -88,31 +73,34 @@ calls its `Routes`.
 
 Packages as they exist **now** (feature-per-package; see `apps/backend/CLAUDE.md`):
 
-| Package              | State                                                                                  |
-| -------------------- | -------------------------------------------------------------------------------------- |
-| `internal/user`      | entity, service, repos + Postgres impls, HTTP handlers — the only fully wired feature  |
-| `internal/party`     | entity, errors, repository, service — **no** handler or repo impl                      |
-| `internal/work`      | entity + errors + repository iface — new Hub metadata model, 100% test coverage        |
-| `internal/reference` | entity + repository iface — new `ContentReference` registry, 100% test coverage        |
-| `internal/social`    | entity + repository iface only                                                         |
-| `internal/history`   | entity + repository iface only                                                         |
-| `internal/platform`  | config, postgres, JWT auth, HTTP middleware, `entity.UUID`/`BaseEntity`                |
+| Package              | State                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| `internal/user`      | entity, service, repos + Postgres impls, HTTP handlers — the only fully wired feature |
+| `internal/party`     | entity, errors, repository, service — **no** handler or repo impl                     |
+| `internal/work`      | Hub metadata catalog: entity, errors, repository + Postgres impl, no HTTP             |
+| `internal/reference` | `ContentReference` registry: entity, `Rank`, repository + Postgres impl, no HTTP      |
+| `internal/progress`  | `Progress{Fraction, Locator}` — the single progress model                             |
+| `internal/social`    | entity + repository iface only                                                        |
+| `internal/history`   | entity (`Entry{WorkID, ChildID, Progress}`) + repository iface only                   |
+| `internal/platform`  | config, postgres (+ `pgtest`), JWT auth, HTTP middleware, `entity.UUID`/`NewUUID`     |
 
 There is **no `content` package** — it was split into `work` + `reference`. Older docs
 that mention it are stale.
 
-**Step 1 of the build order is half-done.** `work`/`reference` exist and `party` is
-repointed to `WorkID`/`ChildID`, but `social` (6 fields + 3 repository methods)
-and `history` (11 fields) still reference the deleted content model via
-`ContentID`/`EpisodeID`/`ChapterID`/`MusicID`. This compiles only because those are
-plain `entity.UUID` struct fields with no import of the removed package. Finishing this
-repoint is the next task.
+**Build order status:**
 
-**Step 3 (Instance skeleton) has started** in `apps/instance`: scanner → `MediaFile` in
-SQLite → read-only JSON API (`/health`, `/api/libraries`, `/api/libraries/{id}/files`,
-`/api/files/{id}`, `POST /api/libraries/{id}/scan`). Not yet built: the signed stream,
-and the Hub connector that reports `ContentReference`s, so the edge-resolves-content
-loop is not proven yet. Steps 1–2 are not finished; Step 3 was started ahead of them.
+- **Step 1 (Work + ContentReference) — done.** `party`, `social` and `history` all point
+  at `WorkID`/`ChildID`; nothing references the old `ContentID`/`EpisodeID`/`ChapterID`/`MusicID`.
+  (`social.Report.ContentID` is the _reported item_, not media — intentionally kept.)
+- **Step 2 (unified progress) — done at the model level.** `history.Entry`,
+  `party.PlaybackState.Position` and `party.DeviceTransfer.Position` all use
+  `progress.Progress`. No tables or endpoints for them yet.
+- **Step 3 (Instance skeleton + connector) — half-done.** `apps/instance` has scanner →
+  `MediaFile` in SQLite → read-only JSON API (`/health`, `/api/libraries`,
+  `/api/libraries/{id}/files`, `/api/files/{id}`, `POST /api/libraries/{id}/scan`).
+  The Hub side now has the `works` / `content_references` tables and repositories.
+  **Not built:** the signed stream, instance registration/auth on the Hub, the
+  Hub endpoints an Instance reports to, and the connector itself.
 
 ## Toolchain
 
@@ -123,18 +111,6 @@ TypeScript **5.9**, ESLint **9** (flat config; no `.eslintrc.*`), Prettier **3**
 `web`'s `build`/`serve`/`lint` are **inferred** by the `@nx/next/plugin` and
 `@nx/eslint/plugin` entries in `nx.json` (they run `next build` / `next dev` / `eslint .`),
 not declared in `apps/web/project.json`. `nx run web:start` serves the production build.
-
-⚠️ **There are two `go.mod` files**, both declaring module `nekosync`:
-
-|                                          | `go` directive | pgx    | echo   | x/crypto |
-| ---------------------------------------- | -------------- | ------ | ------ | -------- |
-| `apps/backend/go.mod` (**the real one**) | 1.26.0         | 5.10.0 | 4.15.4 | 0.54.0   |
-| `./go.mod` (stale leftover)              | 1.24.2         | 5.7.4  | 4.13.3 | 0.41.0   |
-
-The root module contains exactly one package — `nekosync/node_modules/flatted/golang/pkg/flatted`,
-a stray Go file inside an npm dependency. It owns **zero** project source. `Dockerfile:11`
-copies the _root_ `go.mod`, and the Dockerfile's `golang:1.24-alpine` matches that stale
-file rather than the real module. Deleting the root `go.mod`/`go.sum` is safe and wanted.
 
 ## Commands
 
@@ -148,14 +124,16 @@ npx nx serve web                    # dev server on :3000
 npx nx build web
 
 # Backend (make; delegates into apps/backend)
-make test
+make test                           # unit tests; Postgres tests skip
+make test-integration               # + Postgres tests, in a throwaway container on :55432
 make check                          # fmt + vet + lint + sec + test
-make build                          # BROKEN — no cmd/nekosync
+make build                          # ./bin/nekosync
+make dev                            # air hot reload (needs .env with DATABASE_URL, JWT_SECRET)
 
 # Database & Docker
-make docker-up                      # BROKEN — image build needs cmd/nekosync
-make db-up                          # PostgreSQL only (postgres:15-alpine) — works
-make migrate-up                     # BROKEN — see Migrations below
+make db-up                          # PostgreSQL only (postgres:15-alpine)
+make migrate-up                     # apply migrations/ to DATABASE_URL
+make docker-up                      # full compose stack
 make dev-setup                      # installs air, golangci-lint, migrate
 ```
 
@@ -168,19 +146,11 @@ the commands above are what actually works. Do not leave two lockfiles behind.
 
 ## Testing reality
 
-11 test functions, ~204 lines of test against 2,368 lines of Go.
-
-```
-domain/reference      100.0% coverage
-domain/work           100.0% coverage
-everything else         0.0% coverage
-internal/config       FAILS
-```
-
-Zero coverage on `user/service.go` (198 lines, all the auth logic), `party/service.go`
-(281 lines), every repository, every use case, every handler, and the auth middleware.
-The only real tests cover pure functions (`work.ProviderID`, `reference.Rank`) and enum
-values. `go vet ./...` is clean.
+`make test`: 40 pass, 6 skip (Postgres). `make test-integration`: 46 pass. Covered:
+config, JWT, auth middleware, `progress`, `entity.NewUUID`, `work`/`reference` models
+and Postgres repos, and device registration (incl. real-transaction rollback).
+**Not covered:** most of `user/service.go`, all of `party/service.go`, and every HTTP
+handler. `go vet ./...` is clean. CI does not run the Postgres tests yet.
 
 CI (`.github/workflows/`) is **Go-only** — it does not build, lint or test the frontend
 at all. Combined with `next.config.js` setting `typescript.ignoreBuildErrors: true` and
@@ -189,39 +159,26 @@ frontend**.
 
 ## Migrations
 
-There is no `migrations/` directory, and the two tools disagree about where it would be:
-
-- `makefile:15` — `MIGRATIONS_DIR := ./migrations` (does not exist)
-- `apps/backend/project.json` `migrate-up` — `-path ../../scripts` (contains
-  `init-db.sql` and `release.sh`, not versioned golang-migrate files)
-
-Schema today is the single unversioned `scripts/init-db.sql`, applied by the Postgres
-container's entrypoint. It covers **users only**: `users`, `user_profiles`,
-`user_devices`, `user_follows`, `notifications`. There are no tables for parties, works,
-content references, history or social, and its `content_type` / `music_type` enums
-belong to the deleted content model.
+Versioned golang-migrate files in the repo-root `migrations/`: `000001_users`
+(users, profiles, devices, follows, notifications) and `000002_catalog` (`works`,
+`work_children`, `content_references`). `make migrate-up`, the `migrate` compose
+service and `nx run backend:migrate-up` all use this directory. `000001` is guarded
+so it applies to databases created by the old schema script. `scripts/init-db.sql`
+no longer creates schema. No tables yet for parties, history or social.
 
 ## Known breakages
 
 Cross-cutting and pre-existing. Full evidence in `docs/CODEBASE-STATUS.md`.
 
-- **No entrypoint** — see Reality check. Breaks build, docker, air, compose.
-- **Auth is a placeholder** — any bearer token authenticates as `"placeholder-user-id"`.
 - **Frontend health check reports the wrong service** — `apps/web/src/app/api/health/route.ts`
   shadows the `/api/:path*` rewrite in `next.config.js`, so `/api/health` returns the
   _frontend's_ health (`{"service":"neko-sync-web"}`) and stays green with the Go API
   down. Every other `/api/*` path proxies correctly.
-- **Two divergent `go.mod`s** — see Toolchain.
-- **`make sec` cannot install gosec** — `makefile:193` uses
-  `github.com/securecodewarrior/gosec/v2/cmd/gosec`, which 404s. Upstream is
-  `github.com/securego/gosec/v2/cmd/gosec`. The CI security job fails on this.
 - **`nx test web` fails twice over** — `@nx/jest` is in neither `package.json` nor
   `node_modules`, and `apps/web/jest.config.ts` does not exist.
-- **`go test ./internal/config/...` fails standalone** — `config.go:24` calls `log.Fatal`
-  on missing `DATABASE_URL`, killing the test binary. `database.Init` does the same.
-- **No transactions anywhere** — zero `Begin`/`Tx` usage outside migrations.
-  `user.Service.RegisterDevice` deactivates all a user's devices and then inserts, so a
-  failed insert leaves the user with no active device.
+- **Response timestamps mislabel local time as UTC** — `internal/user/http.go` formats
+  times with a literal `Z` (`"2006-01-02T15:04:05Z"`) without converting to UTC.
+- **Handlers leak internal error text** and do no input validation.
 - **One deprecated Nx executor left** — `build`/`serve`/`lint` were converted to inferred
   targets, but `web:export` still uses `@nx/next:export`, which `convert-to-inferred` does
   not handle and Nx 24 removes. (`test` uses `@nx/jest:jest`; see `nx test web` above.)
@@ -232,11 +189,7 @@ Do not trust these without checking the tree:
 
 - **`readme.md`** — frames the project as a "media streaming platform", which contradicts
   the Hub's never-serve-bytes boundary. Also claims "go.mod + makefile live here
-  [apps/backend]": the makefile is at the repo root and there are two go.mods.
-- **`ARCHITECTURE.md`** — zero mentions of Hub, Instance, `Work` or `ContentReference`.
-  Predates the locked direction entirely.
-- **`deployment.md`** — an AWS ECS proposal (~$255-400/mo), not a description of anything
-  that exists. There is no Terraform, no `infrastructure/`, no deploy workflow.
+  [apps/backend]": the makefile is at the repo root.
 
 ## Hosting
 
