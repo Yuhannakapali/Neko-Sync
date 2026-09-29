@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS user_follows;
+DROP TABLE IF EXISTS user_devices;
+DROP TABLE IF EXISTS user_profiles;
+DROP TABLE IF EXISTS users;
+DROP FUNCTION IF EXISTS update_updated_at_column();
+DROP TYPE IF EXISTS notification_type;
+DROP TYPE IF EXISTS platform_type;
+DROP TYPE IF EXISTS user_role;
