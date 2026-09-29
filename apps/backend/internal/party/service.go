@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"nekosync/internal/platform/entity"
+	"nekosync/internal/progress"
 	"nekosync/internal/user"
 	"nekosync/internal/work"
 	"time"
@@ -15,9 +16,9 @@ type ServiceInterface interface {
 	CreateWatchParty(ctx context.Context, hostUserID, workID entity.UUID, title string, maxUsers int, isPrivate bool, password *string) (*WatchParty, error)
 	JoinWatchParty(ctx context.Context, userID entity.UUID, roomCode string, password *string) (*WatchParty, error)
 	LeaveWatchParty(ctx context.Context, userID, partyID entity.UUID) error
-	UpdatePlaybackState(ctx context.Context, partyID, userID entity.UUID, currentTime int, isPlaying bool, speed float64) error
+	UpdatePlaybackState(ctx context.Context, partyID, userID entity.UUID, position progress.Progress, isPlaying bool, speed float64) error
 	SendMessage(ctx context.Context, partyID, userID entity.UUID, message string, timestamp int) error
-	CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID, toDeviceID, workID entity.UUID, position int) (*DeviceTransfer, error)
+	CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID, toDeviceID, workID entity.UUID, childID *entity.UUID, position progress.Progress) (*DeviceTransfer, error)
 }
 
 type Service struct {
@@ -160,7 +161,7 @@ func (s *Service) LeaveWatchParty(ctx context.Context, userID, partyID entity.UU
 	return nil
 }
 
-func (s *Service) UpdatePlaybackState(ctx context.Context, partyID, userID entity.UUID, currentTime int, isPlaying bool, speed float64) error {
+func (s *Service) UpdatePlaybackState(ctx context.Context, partyID, userID entity.UUID, position progress.Progress, isPlaying bool, speed float64) error {
 	p, err := s.partyRepo.GetByID(ctx, partyID)
 	if err != nil {
 		return ErrNotFound
@@ -181,7 +182,7 @@ func (s *Service) UpdatePlaybackState(ctx context.Context, partyID, userID entit
 
 	return s.partyRepo.UpdatePlaybackState(ctx, &PlaybackState{
 		PartyID:       partyID,
-		CurrentTime:   currentTime,
+		Position:      position,
 		IsPlaying:     isPlaying,
 		PlaybackSpeed: speed,
 		UpdatedAt:     time.Now(),
@@ -212,7 +213,7 @@ func (s *Service) SendMessage(ctx context.Context, partyID, userID entity.UUID, 
 	})
 }
 
-func (s *Service) CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID, toDeviceID, workID entity.UUID, position int) (*DeviceTransfer, error) {
+func (s *Service) CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID, toDeviceID, workID entity.UUID, childID *entity.UUID, position progress.Progress) (*DeviceTransfer, error) {
 	devices, err := s.deviceRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user devices: %w", err)
@@ -246,6 +247,7 @@ func (s *Service) CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID
 		FromDeviceID: fromDeviceID,
 		ToDeviceID:   toDeviceID,
 		WorkID:       workID,
+		ChildID:      childID,
 		Position:     position,
 		IsCompleted:  false,
 	}

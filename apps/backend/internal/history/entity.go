@@ -2,50 +2,38 @@ package history
 
 import (
 	"nekosync/internal/platform/entity"
+	"nekosync/internal/progress"
 	"time"
 )
 
-type WatchHistory struct {
-	UserID          entity.UUID `json:"user_id" db:"user_id"`
-	ContentID       entity.UUID `json:"content_id" db:"content_id"`
-	EpisodeID       entity.UUID `json:"episode_id" db:"episode_id"`
-	ProgressSeconds int         `json:"progress_seconds" db:"progress_seconds"`
-	Status          string      `json:"status" db:"status"`
-	WatchedAt       time.Time   `json:"watched_at" db:"watched_at"`
-	Finished        bool        `json:"finished" db:"finished"`
-}
+type Status string
 
-type ReadHistory struct {
-	UserID     entity.UUID `json:"user_id" db:"user_id"`
-	ContentID  entity.UUID `json:"content_id" db:"content_id"`
-	ChapterID  entity.UUID `json:"chapter_id" db:"chapter_id"`
-	PageNumber int         `json:"page_number" db:"page_number"`
-	Status     string      `json:"status" db:"status"`
-	ReadAt     time.Time   `json:"read_at" db:"read_at"`
-	Finished   bool        `json:"finished" db:"finished"`
-}
+const (
+	StatusInProgress Status = "in_progress"
+	StatusCompleted  Status = "completed"
+	StatusDropped    Status = "dropped"
+	StatusPlanned    Status = "planned"
+)
 
-type ListenHistory struct {
-	UserID          entity.UUID `json:"user_id" db:"user_id"`
-	MusicID         entity.UUID `json:"music_id" db:"music_id"`
-	ProgressSeconds int         `json:"progress_seconds" db:"progress_seconds"`
-	Status          string      `json:"status" db:"status"`
-	ListenedAt      time.Time   `json:"listened_at" db:"listened_at"`
-	Finished        bool        `json:"finished" db:"finished"`
+// Entry is one user's progress through one work, or one child of it
+// (episode, chapter, track). It replaces the old per-medium watch/read/listen
+// histories: the medium lives on the Work, the position in Progress.
+type Entry struct {
+	UserID    entity.UUID       `json:"user_id" db:"user_id"`
+	WorkID    entity.UUID       `json:"work_id" db:"work_id"`
+	ChildID   *entity.UUID      `json:"child_id" db:"child_id"`
+	Progress  progress.Progress `json:"progress"`
+	Status    Status            `json:"status" db:"status"`
+	UpdatedAt time.Time         `json:"updated_at" db:"updated_at"`
 }
 
 type Favorite struct {
 	UserID      entity.UUID `json:"user_id" db:"user_id"`
-	ContentID   entity.UUID `json:"content_id" db:"content_id"`
+	WorkID      entity.UUID `json:"work_id" db:"work_id"`
 	FavoritedAt time.Time   `json:"favorited_at" db:"favorited_at"`
 }
 
-type FavoriteMusic struct {
-	UserID      entity.UUID `json:"user_id" db:"user_id"`
-	MusicID     entity.UUID `json:"music_id" db:"music_id"`
-	FavoritedAt time.Time   `json:"favorited_at" db:"favorited_at"`
-}
-
+// Playlist is an ordered, user-curated list of works or children of any medium.
 type Playlist struct {
 	entity.BaseEntity
 	UserID        entity.UUID `json:"user_id" db:"user_id"`
@@ -55,9 +43,10 @@ type Playlist struct {
 	IsPublic      bool        `json:"is_public" db:"is_public"`
 }
 
-type PlaylistMusic struct {
-	PlaylistID entity.UUID `json:"playlist_id" db:"playlist_id"`
-	MusicID    entity.UUID `json:"music_id" db:"music_id"`
-	AddedAt    time.Time   `json:"added_at" db:"added_at"`
-	OrderIndex int         `json:"order_index" db:"order_index"`
+type PlaylistItem struct {
+	PlaylistID entity.UUID  `json:"playlist_id" db:"playlist_id"`
+	WorkID     entity.UUID  `json:"work_id" db:"work_id"`
+	ChildID    *entity.UUID `json:"child_id" db:"child_id"`
+	AddedAt    time.Time    `json:"added_at" db:"added_at"`
+	OrderIndex int          `json:"order_index" db:"order_index"`
 }

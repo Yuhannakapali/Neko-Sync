@@ -2,6 +2,7 @@ package party
 
 import (
 	"nekosync/internal/platform/entity"
+	"nekosync/internal/progress"
 	"time"
 )
 
@@ -61,12 +62,12 @@ type PartyMember struct {
 }
 
 type PlaybackState struct {
-	PartyID       entity.UUID `json:"party_id" db:"party_id"`
-	CurrentTime   int         `json:"current_time" db:"current_time"`
-	IsPlaying     bool        `json:"is_playing" db:"is_playing"`
-	PlaybackSpeed float64     `json:"playback_speed" db:"playback_speed"`
-	UpdatedAt     time.Time   `json:"updated_at" db:"updated_at"`
-	UpdatedBy     entity.UUID `json:"updated_by" db:"updated_by"`
+	PartyID       entity.UUID       `json:"party_id" db:"party_id"`
+	Position      progress.Progress `json:"position"`
+	IsPlaying     bool              `json:"is_playing" db:"is_playing"`
+	PlaybackSpeed float64           `json:"playback_speed" db:"playback_speed"`
+	UpdatedAt     time.Time         `json:"updated_at" db:"updated_at"`
+	UpdatedBy     entity.UUID       `json:"updated_by" db:"updated_by"`
 }
 
 type Message struct {
@@ -80,17 +81,15 @@ type Message struct {
 // ========== DEVICE TRANSFER ==========
 
 // DeviceTransfer hands off in-progress playback from one device to another.
-// Position is kept as-is here; it folds into the unified Progress{Fraction, Locator}
-// model in a later step.
 type DeviceTransfer struct {
 	entity.BaseEntity
-	UserID       entity.UUID  `json:"user_id" db:"user_id"`
-	FromDeviceID entity.UUID  `json:"from_device_id" db:"from_device_id"`
-	ToDeviceID   entity.UUID  `json:"to_device_id" db:"to_device_id"`
-	WorkID       entity.UUID  `json:"work_id" db:"work_id"`
-	ChildID      *entity.UUID `json:"child_id" db:"child_id"`
-	Position     int          `json:"position" db:"position"`
-	IsCompleted  bool         `json:"is_completed" db:"is_completed"`
+	UserID       entity.UUID       `json:"user_id" db:"user_id"`
+	FromDeviceID entity.UUID       `json:"from_device_id" db:"from_device_id"`
+	ToDeviceID   entity.UUID       `json:"to_device_id" db:"to_device_id"`
+	WorkID       entity.UUID       `json:"work_id" db:"work_id"`
+	ChildID      *entity.UUID      `json:"child_id" db:"child_id"`
+	Position     progress.Progress `json:"position"`
+	IsCompleted  bool              `json:"is_completed" db:"is_completed"`
 }
 
 func (dt *DeviceTransfer) Complete() {
