@@ -82,30 +82,30 @@ deletion is the whole point of the architecture.
 
 ## Backend layering
 
-`interfaces → application → domain ← infrastructure`, domain split into self-contained
-per-aggregate packages. `interfaces/http/server.go`'s `NewHTTPServer` is the composition
-root: repository → domain service → use case → handler.
+One package per feature under `internal/`, shared plumbing under `internal/platform/`.
+`internal/app/server.go`'s `NewServer` is the composition root: it builds each feature and
+calls its `Routes`.
 
-Domain packages as they exist **now**:
+Packages as they exist **now** (feature-per-package; see `apps/backend/CLAUDE.md`):
 
-| Package            | State                                                                                  |
-| ------------------ | -------------------------------------------------------------------------------------- |
-| `domain/user`      | entity, errors, repository, service — the only fully wired aggregate                   |
-| `domain/party`     | entity, errors, repository, service — service exists, **no** usecase/handler/repo impl |
-| `domain/work`      | entity + errors + repository iface — new Hub metadata model, 100% test coverage        |
-| `domain/reference` | entity + repository iface — new `ContentReference` registry, 100% test coverage        |
-| `domain/social`    | entity + repository iface only                                                         |
-| `domain/history`   | entity + repository iface only                                                         |
-| `domain/shared`    | `UUID`, `BaseEntity`                                                                   |
+| Package              | State                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| `internal/user`      | entity, service, repos + Postgres impls, HTTP handlers — the only fully wired feature  |
+| `internal/party`     | entity, errors, repository, service — **no** handler or repo impl                      |
+| `internal/work`      | entity + errors + repository iface — new Hub metadata model, 100% test coverage        |
+| `internal/reference` | entity + repository iface — new `ContentReference` registry, 100% test coverage        |
+| `internal/social`    | entity + repository iface only                                                         |
+| `internal/history`   | entity + repository iface only                                                         |
+| `internal/platform`  | config, postgres, JWT auth, HTTP middleware, `entity.UUID`/`BaseEntity`                |
 
-There is **no `domain/content`** — it was split into `work` + `reference`. Older docs
+There is **no `content` package** — it was split into `work` + `reference`. Older docs
 that mention it are stale.
 
 **Step 1 of the build order is half-done.** `work`/`reference` exist and `party` is
-repointed to `WorkID`/`ChildID`, but `domain/social` (6 fields + 3 repository methods)
-and `domain/history` (11 fields) still reference the deleted content model via
+repointed to `WorkID`/`ChildID`, but `social` (6 fields + 3 repository methods)
+and `history` (11 fields) still reference the deleted content model via
 `ContentID`/`EpisodeID`/`ChapterID`/`MusicID`. This compiles only because those are
-plain `shared.UUID` struct fields with no import of the removed package. Finishing this
+plain `entity.UUID` struct fields with no import of the removed package. Finishing this
 repoint is the next task.
 
 **Step 3 (Instance skeleton) has started** in `apps/instance`: scanner → `MediaFile` in

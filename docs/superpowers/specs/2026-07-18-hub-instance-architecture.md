@@ -31,7 +31,7 @@ Legal boundary is the design rationale: centralizing coordination = legitimate S
 6. **Watch-together over real streams** (party broadcasts timeline; each client applies to its own resolved source).
 7. External scrobbling, remaining engines (image/audio/text), managed hosting.
 
-## Repo mapping (`apps/backend/internal/domain/...`)
+## Repo mapping (`apps/backend/internal/domain/...` at the time; now `apps/backend/internal/<feature>/`)
 
 | Current | Destination | Change |
 |---|---|---|

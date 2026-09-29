@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working in the 
 
 ## Scope
 
-Go application, module `nekosync`, requiring **Go 1.26**. All Go commands must be run from this directory (`apps/backend/`) — that is where `go.mod` and the `makefile` live.
+Go application, module `nekosync`, requiring **Go 1.26**. Run Go commands from this directory (`apps/backend/`), where `go.mod` lives; the `makefile` is at the repo root and `cd`s here.
 
 ## Commands
 
@@ -16,8 +16,8 @@ air
 make test                           # all tests
 make test-unit                      # short tests only (-short)
 make test-coverage                  # generates coverage.html
-go test -v ./internal/domain/user/...   # a single package
-go test -run TestName ./internal/domain/user/...  # a single test
+go test -v ./internal/user/...   # a single package
+go test -run TestName ./internal/user/...  # a single test
 
 # Quality
 make lint                           # golangci-lint
@@ -25,43 +25,50 @@ make fmt                            # gofmt + go mod tidy
 make vet                            # go vet
 make check                          # fmt + vet + lint + sec + test
 
-# Build (see "Current known breakages" — target is broken)
-make build                          # would output ./bin/nekosync
+# Build
+make build                          # outputs ./bin/nekosync (from ./cmd/nekosync)
 ```
 
-## Clean Architecture (DDD, per-aggregate)
+## Layout — one package per feature
 
-Dependencies flow inward: `interfaces → domain ← infrastructure`. Every layer imports the module as `nekosync/internal/...`.
+```
+cmd/nekosync/main.go        load config → open db → app.NewServer → start
+internal/
+  app/server.go             composition root: builds each feature, registers its routes
+  platform/                 shared plumbing, no business logic
+    config/                 config.Load() → (*Config, error)
+    postgres/               postgres.Init(cfg) → (*sql.DB, error)
+    auth/                   JWTManager: Issue / Verify HS256 tokens (subject = user ID)
+    httpx/                  AuthMiddleware(verifier): sets "user_id" from a verified token
+    entity/                 entity.UUID, entity.BaseEntity
+  user/                     the only fully wired feature (see below)
+  party/                    entity, errors, repository iface, service — not wired to HTTP
+  work/, reference/         Hub metadata + ContentReference registry: entity, errors, repository iface
+  social/, history/         entity + repository iface only
+```
 
-The domain is organized as **one self-contained package per aggregate** under `internal/domain/`, each bundling its own entity, repository interface, errors, and (where it has behavior) a service:
+A feature package owns everything about that feature. `user/` contains:
 
-- `domain/user/` — `entity.go`, `repository.go` (four interfaces: `Repository`, `DeviceRepository`, `FollowRepository`, `NotificationRepository`), `service.go` (`Service`, constructed via `NewService(userRepo, deviceRepo, followRepo, notifRepo)`), `errors.go`.
-- `domain/party/` — watch-party aggregate, also has a `service.go`.
-- `domain/work/`, `domain/reference/`, `domain/social/`, `domain/history/` — entities + repository interfaces (no service yet).
-- `domain/shared/` — cross-aggregate types and enums (`types.go`), e.g. `shared.UUID`, `PlatformType`, `NotificationType`. Import this rather than redefining shared types in an aggregate.
+- `entity.go`, `errors.go` — domain types and errors
+- `service.go` — business rules (`Service`, built by `NewService(userRepo, deviceRepo, followRepo, notifRepo)`)
+- `repository.go` — the four storage interfaces the service needs
+- `postgres_{user,device,follow,notification}.go` — their PostgreSQL implementations (`New*Repository(db)`)
+- `http.go` — Echo handlers (`Handler`, `NewHandler(svc, tokens)`) and `Routes(public, protected)`
+- `dto.go` — request/response JSON shapes
 
-Layer responsibilities:
+Dependency rules: features may import `platform/*` and, where the domain needs it, another feature (`party` imports `user` and `work`). `platform/*` never imports a feature. Only `app` knows about every feature.
 
-- **`infrastructure/repositories/`** — PostgreSQL implementations of the domain repository interfaces (`user_repository_impl.go`, `device_repository_impl.go`, `follow_repository_impl.go`, `notification_repository_impl.go`), constructed via `repositories.New*Repository(db)`.
-- **`infrastructure/database/`** — `postgres.go`, DB connection setup (`database/sql` + pgx stdlib driver).
-- **`infrastructure/auth/`** — `JWTManager`, which issues and verifies HS256 access tokens (subject = user ID).
-- **`interfaces/http/`** — Echo wiring. `server.go`'s `NewHTTPServer(cfg, db)` is the composition root: it builds repositories → domain service → handler, then registers routes. `handlers/` holds the Echo handlers and their request/response DTOs (`user_dto.go`); handlers call the domain `Service` directly and map domain types to DTOs. `middleware/` holds `auth.go`.
+### Adding an endpoint
 
-### Wiring pattern (follow this when adding a feature)
-
-`NewHTTPServer` shows the canonical flow. To add an endpoint: add the method to the aggregate's `Service` (and to a repository if it needs new queries), add request/response DTOs next to the handler, add the handler method, and register the route in `server.go`. Protected routes go under the `protected` group guarded by `customMiddleware.AuthMiddleware(tokens)`, which sets `user_id` from the verified token. Do not add a use-case layer back unless an operation genuinely spans several services.
+All in the feature's folder: add the method to `service.go` (and a query to the matching `postgres_*.go` + `repository.go` if needed), add DTOs to `dto.go`, add a handler to `http.go`, and register it in that package's `Routes`. `app/server.go` changes only when adding a whole new feature. Routes under `protected` require a valid JWT; read the caller with `c.Get("user_id").(string)`. Do not add a use-case layer back unless an operation genuinely spans several features.
 
 ## Routes
 
-`NewHTTPServer` exposes `GET /health`, public `POST /api/v1/users/register` and `/users/login`, and auth-protected `PUT /users/profile`, `POST /users/follow`, `POST /users/devices`.
-
-## Auth middleware
-
-`interfaces/http/middleware/auth.go` is a **placeholder** — it checks for a `Bearer` token but does not validate a JWT, and sets `user_id` to a hardcoded string. Real JWT validation is pending; don't assume `user_id` from context is trustworthy yet.
+`GET /health`, public `POST /api/v1/users/register` and `/users/login`, and JWT-protected `PUT /users/profile`, `POST /users/follow`, `POST /users/devices`.
 
 ## Config & environment
 
-`config.Load()` reads env (via `godotenv`), defaulting `PORT` to `8080` and **calling `log.Fatal` if `DATABASE_URL` is unset**. Copy `.env.example` to `.env` first. Required: `DATABASE_URL`. Expected: `PORT`, `JWT_SECRET`.
+`config.Load()` reads env (via `godotenv`) and returns an error instead of exiting. Required: `DATABASE_URL`, `JWT_SECRET`. Optional: `PORT` (default `8080`), `JWT_EXPIRY` (Go duration, default `24h`). Copy the repo-root `.env.example` to `.env` first.
 
 ## Key dependencies
 
@@ -71,8 +78,10 @@ Layer responsibilities:
 | `github.com/jackc/pgx/v5/stdlib` | PostgreSQL driver (via `database/sql`) |
 | `github.com/joho/godotenv` | `.env` loading |
 | `golang.org/x/crypto` | Password hashing |
+| `github.com/golang-jwt/jwt/v5` | Access tokens |
 
-## Current known breakages
+## Current known gaps
 
-- **No `main` package / entrypoint.** There is no `cmd/nekosync` (nor any other `package main`) in the tree, so `make build` — which runs `go build ... ./cmd/nekosync` — fails. `go build ./...` compiles the libraries but produces no binary. `NewHTTPServer` has no caller yet. A `cmd/nekosync/main.go` that runs `config.Load()`, opens the DB, and starts the Echo server is needed to make the app runnable.
-- **`go test ./internal/config/...` fails standalone.** `config.go` calls `log.Fatal` (→ `os.Exit`) on missing `DATABASE_URL`, which kills the test binary and reports FAIL. This is a test-design bug, not a regression; the rest of the suite passes.
+- No migrations beyond `scripts/init-db.sql` (users only); `party`, `work`, `reference`, `social`, `history` have no tables or repository implementations.
+- `RegisterDevice` is transactional (`ReplaceActive`), but nothing else uses transactions yet.
+- Handlers return raw error strings to clients and do no input validation (`// TODO: Add validation`).
