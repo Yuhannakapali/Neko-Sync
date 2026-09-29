@@ -152,6 +152,21 @@ test-unit: ## Run unit tests only
 	@echo "$(CYAN)Running unit tests...$(NC)"
 	@cd $(BACKEND_DIR) && go test -v -short ./...
 
+TEST_DB_CONTAINER := nekosync-test-db
+TEST_DATABASE_URL := postgres://postgres:test@localhost:55432/nekosync_test?sslmode=disable
+
+.PHONY: test-integration
+test-integration: ## Run all tests, including Postgres ones, against a throwaway container
+	@echo "$(CYAN)Starting throwaway Postgres on :55432...$(NC)"
+	@docker rm -f $(TEST_DB_CONTAINER) > /dev/null 2>&1 || true
+	@docker run -d --rm --name $(TEST_DB_CONTAINER) -e POSTGRES_PASSWORD=test -e POSTGRES_DB=nekosync_test \
+		-p 55432:5432 postgres:15-alpine > /dev/null
+	@until docker exec $(TEST_DB_CONTAINER) pg_isready -U postgres -d nekosync_test > /dev/null 2>&1; do sleep 1; done
+	@sleep 1
+	@migrate -path $(MIGRATIONS_DIR) -database "$(TEST_DATABASE_URL)" up
+	@cd $(BACKEND_DIR) && TEST_DATABASE_URL="$(TEST_DATABASE_URL)" go test -v -count=1 ./...; \
+		status=$$?; docker rm -f $(TEST_DB_CONTAINER) > /dev/null; exit $$status
+
 .PHONY: bench
 bench: ## Run benchmarks
 	@echo "$(CYAN)Running benchmarks...$(NC)"
