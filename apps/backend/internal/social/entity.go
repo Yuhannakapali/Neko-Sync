@@ -15,15 +15,14 @@ const (
 
 type Discussion struct {
 	entity.BaseEntity
-	UserID    entity.UUID  `json:"user_id" db:"user_id"`
-	Title     string       `json:"title" db:"title"`
-	Content   string       `json:"content" db:"content"`
-	ContentID *entity.UUID `json:"content_id" db:"content_id"`
-	EpisodeID *entity.UUID `json:"episode_id" db:"episode_id"`
-	ChapterID *entity.UUID `json:"chapter_id" db:"chapter_id"`
-	IsLocked  bool         `json:"is_locked" db:"is_locked"`
-	IsPinned  bool         `json:"is_pinned" db:"is_pinned"`
-	Views     int          `json:"views" db:"views"`
+	UserID   entity.UUID  `json:"user_id" db:"user_id"`
+	Title    string       `json:"title" db:"title"`
+	Content  string       `json:"content" db:"content"`
+	WorkID   *entity.UUID `json:"work_id" db:"work_id"`   // nil for a general discussion
+	ChildID  *entity.UUID `json:"child_id" db:"child_id"` // specific episode/chapter/track
+	IsLocked bool         `json:"is_locked" db:"is_locked"`
+	IsPinned bool         `json:"is_pinned" db:"is_pinned"`
+	Views    int          `json:"views" db:"views"`
 }
 
 type DiscussionPost struct {
@@ -44,18 +43,19 @@ type DiscussionReaction struct {
 
 type Comment struct {
 	entity.BaseEntity
-	UserID    entity.UUID  `json:"user_id" db:"user_id"`
-	ContentID entity.UUID  `json:"content_id" db:"content_id"`
-	Comment   string       `json:"comment" db:"comment"`
-	ParentID  *entity.UUID `json:"parent_id" db:"parent_id"`
+	UserID   entity.UUID  `json:"user_id" db:"user_id"`
+	WorkID   entity.UUID  `json:"work_id" db:"work_id"`
+	ChildID  *entity.UUID `json:"child_id" db:"child_id"`
+	Comment  string       `json:"comment" db:"comment"`
+	ParentID *entity.UUID `json:"parent_id" db:"parent_id"`
 }
 
 type Review struct {
 	entity.BaseEntity
-	UserID    entity.UUID `json:"user_id" db:"user_id"`
-	ContentID entity.UUID `json:"content_id" db:"content_id"`
-	Rating    int         `json:"rating" db:"rating"`
-	Review    *string     `json:"review" db:"review"`
+	UserID entity.UUID `json:"user_id" db:"user_id"`
+	WorkID entity.UUID `json:"work_id" db:"work_id"`
+	Rating int         `json:"rating" db:"rating"`
+	Review *string     `json:"review" db:"review"`
 }
 
 type Report struct {
