@@ -55,7 +55,7 @@ func (s *Service) CreateWatchParty(ctx context.Context, hostUserID, workID entit
 
 	p := &WatchParty{
 		BaseEntity: entity.BaseEntity{
-			ID:        entity.UUID(generateID()),
+			ID:        entity.NewUUID(),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
@@ -201,7 +201,7 @@ func (s *Service) SendMessage(ctx context.Context, partyID, userID entity.UUID, 
 
 	return s.partyRepo.CreateMessage(ctx, &Message{
 		BaseEntity: entity.BaseEntity{
-			ID:        entity.UUID(generateID()),
+			ID:        entity.NewUUID(),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
@@ -238,7 +238,7 @@ func (s *Service) CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID
 
 	t := &DeviceTransfer{
 		BaseEntity: entity.BaseEntity{
-			ID:        entity.UUID(generateID()),
+			ID:        entity.NewUUID(),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
@@ -257,17 +257,6 @@ func (s *Service) CreateDeviceTransfer(ctx context.Context, userID, fromDeviceID
 	return t, nil
 }
 
-func generateID() string {
-	b := make([]byte, 16)
-	rand.Read(b)
-	result := make([]byte, 32)
-	const hex = "0123456789abcdef"
-	for i, v := range b {
-		result[i*2] = hex[v>>4]
-		result[i*2+1] = hex[v&0x0f]
-	}
-	return string(result)
-}
 
 func generateRoomCode() string {
 	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

@@ -2,8 +2,6 @@ package user
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"nekosync/internal/platform/entity"
 	"time"
@@ -52,7 +50,7 @@ func (s *Service) CreateUser(ctx context.Context, username, email, password stri
 
 	u := &User{
 		BaseEntity: entity.BaseEntity{
-			ID:        entity.UUID(generateID()),
+			ID:        entity.NewUUID(),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
@@ -140,7 +138,7 @@ func (s *Service) UnfollowUser(ctx context.Context, followerID, followingID enti
 func (s *Service) CreateNotification(ctx context.Context, userID entity.UUID, notifType NotificationType, title, message string, data map[string]interface{}) error {
 	n := &Notification{
 		BaseEntity: entity.BaseEntity{
-			ID:        entity.UUID(generateID()),
+			ID:        entity.NewUUID(),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
@@ -158,7 +156,7 @@ func (s *Service) CreateNotification(ctx context.Context, userID entity.UUID, no
 func (s *Service) RegisterDevice(ctx context.Context, userID entity.UUID, deviceName string, platform PlatformType) (*Device, error) {
 	d := &Device{
 		BaseEntity: entity.BaseEntity{
-			ID:        entity.UUID(generateID()),
+			ID:        entity.NewUUID(),
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
@@ -176,8 +174,3 @@ func (s *Service) RegisterDevice(ctx context.Context, userID entity.UUID, device
 	return d, nil
 }
 
-func generateID() string {
-	b := make([]byte, 16)
-	rand.Read(b)
-	return hex.EncodeToString(b)
-}

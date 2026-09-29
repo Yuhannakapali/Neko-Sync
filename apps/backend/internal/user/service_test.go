@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"regexp"
 	"testing"
 
 	"nekosync/internal/platform/entity"
@@ -73,3 +74,27 @@ func TestRegisterDeviceReplacesActiveDevice(t *testing.T) {
 		t.Fatalf("unexpected state: existing=%v new=%v count=%d", existing.IsActive, d.IsActive, len(repo.devices))
 	}
 }
+
+type fakeUserRepo struct {
+	Repository
+	created *User
+}
+
+func (f *fakeUserRepo) GetByEmail(context.Context, string) (*User, error)    { return nil, ErrNotFound }
+func (f *fakeUserRepo) GetByUsername(context.Context, string) (*User, error) { return nil, ErrNotFound }
+func (f *fakeUserRepo) Create(_ context.Context, u *User) error              { f.created = u; return nil }
+
+// Postgres stores ids in a uuid column and returns them in canonical form, so an
+// id in any other form changes between registration and every later read.
+func TestCreateUserUsesCanonicalUUID(t *testing.T) {
+	repo := &fakeUserRepo{}
+	u, err := NewService(repo, nil, nil, nil).CreateUser(context.Background(), "neko", "n@example.com", "password1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !canonicalUUID.MatchString(string(u.ID)) {
+		t.Fatalf("id %q is not a canonical UUID", u.ID)
+	}
+}
+
+var canonicalUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
