@@ -2,27 +2,27 @@ package database
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"nekosync/internal/config"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-// Init initializes the PostgreSQL database connection
-func Init(cfg *config.Config) *sql.DB {
+// Init opens and verifies the PostgreSQL connection pool.
+func Init(cfg *config.Config) (*sql.DB, error) {
 	db, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("open database: %w", err)
 	}
 
 	if err = db.Ping(); err != nil {
-		log.Fatal(err)
+		db.Close()
+		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
-	// Set connection pool settings
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(25)
 
-	return db
+	return db, nil
 }

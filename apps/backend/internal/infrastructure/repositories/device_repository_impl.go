@@ -16,12 +16,12 @@ func NewDeviceRepository(db *sql.DB) user.DeviceRepository {
 	return &deviceRepository{db: db}
 }
 
-func (r *deviceRepository) Create(ctx context.Context, d *user.Device) error {
-	query := `
-		INSERT INTO user_devices (id, user_id, device_name, platform, last_seen, websocket_id, is_active, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+const insertDeviceQuery = `
+	INSERT INTO user_devices (id, user_id, device_name, platform, last_seen, websocket_id, is_active, created_at, updated_at)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
-	_, err := r.db.ExecContext(ctx, query,
+func (r *deviceRepository) Create(ctx context.Context, d *user.Device) error {
+	_, err := r.db.ExecContext(ctx, insertDeviceQuery,
 		d.ID, d.UserID, d.DeviceName, d.Platform,
 		d.LastSeen, d.WebsocketID, d.IsActive,
 		d.CreatedAt, d.UpdatedAt)
@@ -74,4 +74,27 @@ func (r *deviceRepository) DeactivateAllForUser(ctx context.Context, userID shar
 		`UPDATE user_devices SET is_active = false, updated_at = $2 WHERE user_id = $1`,
 		userID, time.Now())
 	return err
+}
+
+func (r *deviceRepository) ReplaceActive(ctx context.Context, d *user.Device) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE user_devices SET is_active = false, updated_at = $2 WHERE user_id = $1`,
+		d.UserID, time.Now()); err != nil {
+		return err
+	}
+
+	if _, err := tx.ExecContext(ctx, insertDeviceQuery,
+		d.ID, d.UserID, d.DeviceName, d.Platform,
+		d.LastSeen, d.WebsocketID, d.IsActive,
+		d.CreatedAt, d.UpdatedAt); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

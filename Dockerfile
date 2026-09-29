@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.24-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
@@ -8,17 +8,22 @@ RUN apk add --no-cache git ca-certificates tzdata
 WORKDIR /build
 
 # Copy go mod files
-COPY go.mod go.sum ./
+COPY apps/backend/go.mod apps/backend/go.sum ./
 
 # Download dependencies
 RUN go mod download
 
 # Copy source code
-COPY . .
+COPY apps/backend/ ./
+
+# Build arguments
+ARG VERSION=dev
+ARG BUILD_TIME
+ARG GIT_COMMIT
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-s -w -X main.version=${VERSION:-dev} -X main.buildTime=$(date -u '+%Y-%m-%d_%H:%M:%S')" \
+    -ldflags="-s -w -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME} -X main.gitCommit=${GIT_COMMIT}" \
     -o nekosync \
     ./cmd/nekosync
 
@@ -28,27 +33,23 @@ FROM alpine:latest
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates tzdata
 
-# Create app user
+# Create non-root user
 RUN addgroup -g 1001 -S nekosync && \
-    adduser -u 1001 -S nekosync -G nekosync
+    adduser -S nekosync -u 1001 -G nekosync
 
 # Set working directory
 WORKDIR /app
 
 # Copy binary from builder stage
-COPY --from=builder /build/nekosync .
+COPY --from=builder /build/nekosync /app/nekosync
 
-# Copy configuration files
-COPY --from=builder /build/.env.example .env.example
+# Change ownership
+RUN chown nekosync:nekosync /app/nekosync
 
-# Create upload directory
-RUN mkdir -p uploads && \
-    chown -R nekosync:nekosync /app
-
-# Switch to app user
+# Switch to non-root user
 USER nekosync
 
-# Expose port
+# Expose port (adjust as needed)
 EXPOSE 8080
 
 # Health check

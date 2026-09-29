@@ -57,11 +57,11 @@ help: ## Show this help message
 dev: ## Start development server with hot reload
 	@echo "$(CYAN)Starting development server...$(NC)"
 	@if command -v air > /dev/null 2>&1; then \
-		air; \
+		cd $(BACKEND_DIR) && air; \
 	else \
 		echo "$(YELLOW)Installing air for hot reload...$(NC)"; \
 		go install github.com/air-verse/air@latest; \
-		air; \
+		cd $(BACKEND_DIR) && air; \
 	fi
 
 .PHONY: dev-setup
@@ -190,7 +190,7 @@ sec: ## Run security checks
 		gosec ./...; \
 	else \
 		echo "$(YELLOW)Installing gosec...$(NC)"; \
-		go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest; \
+		go install github.com/securego/gosec/v2/cmd/gosec@latest; \
 		gosec ./...; \
 	fi
 

@@ -23,10 +23,10 @@ type ServiceInterface interface {
 }
 
 type Service struct {
-	repo         Repository
-	deviceRepo   DeviceRepository
-	followRepo   FollowRepository
-	notifRepo    NotificationRepository
+	repo       Repository
+	deviceRepo DeviceRepository
+	followRepo FollowRepository
+	notifRepo  NotificationRepository
 }
 
 func NewService(
@@ -167,10 +167,6 @@ func (s *Service) CreateNotification(ctx context.Context, userID shared.UUID, no
 }
 
 func (s *Service) RegisterDevice(ctx context.Context, userID shared.UUID, deviceName string, platform PlatformType) (*Device, error) {
-	if err := s.deviceRepo.DeactivateAllForUser(ctx, userID); err != nil {
-		return nil, fmt.Errorf("failed to deactivate existing devices: %w", err)
-	}
-
 	d := &Device{
 		BaseEntity: shared.BaseEntity{
 			ID:        shared.UUID(generateID()),
@@ -184,8 +180,8 @@ func (s *Service) RegisterDevice(ctx context.Context, userID shared.UUID, device
 		IsActive:   true,
 	}
 
-	if err := s.deviceRepo.Create(ctx, d); err != nil {
-		return nil, fmt.Errorf("failed to create device: %w", err)
+	if err := s.deviceRepo.ReplaceActive(ctx, d); err != nil {
+		return nil, fmt.Errorf("failed to register device: %w", err)
 	}
 
 	return d, nil

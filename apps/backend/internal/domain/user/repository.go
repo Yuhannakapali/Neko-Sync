@@ -25,6 +25,8 @@ type DeviceRepository interface {
 	Update(ctx context.Context, d *Device) error
 	Delete(ctx context.Context, id shared.UUID) error
 	DeactivateAllForUser(ctx context.Context, userID shared.UUID) error
+	// ReplaceActive atomically deactivates the user's devices and inserts d.
+	ReplaceActive(ctx context.Context, d *Device) error
 }
 
 type FollowRepository interface {

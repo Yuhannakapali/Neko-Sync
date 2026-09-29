@@ -65,7 +65,7 @@
     "docker-build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "docker build -t nekosync-backend:latest -f ../../Dockerfile .",
+        "command": "docker build -t nekosync-backend:latest -f ../../Dockerfile ../..",
         "cwd": "apps/backend"
       }
     },

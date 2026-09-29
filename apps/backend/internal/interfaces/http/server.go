@@ -5,6 +5,7 @@ import (
 	"nekosync/internal/application/usecases/user"
 	"nekosync/internal/config"
 	userDomain "nekosync/internal/domain/user"
+	"nekosync/internal/infrastructure/auth"
 	"nekosync/internal/infrastructure/repositories"
 	"nekosync/internal/interfaces/http/handlers"
 	customMiddleware "nekosync/internal/interfaces/http/middleware"
@@ -31,12 +32,14 @@ func NewHTTPServer(cfg *config.Config, db *sql.DB) *echo.Echo {
 	followRepo := repositories.NewFollowRepository(db)
 	notifRepo := repositories.NewNotificationRepository(db)
 
+	tokens := auth.NewJWTManager(cfg.JWTSecret, cfg.JWTExpiry)
+
 	// Domain service
 	userService := userDomain.NewService(userRepo, deviceRepo, followRepo, notifRepo)
 
 	// Use cases
 	createUserUC := user.NewCreateUserUseCase(userService)
-	authenticateUC := user.NewAuthenticateUserUseCase(userService)
+	authenticateUC := user.NewAuthenticateUserUseCase(userService, tokens)
 	updateProfileUC := user.NewUpdateProfileUseCase(userService)
 	followUserUC := user.NewFollowUserUseCase(userService)
 	registerDeviceUC := user.NewRegisterDeviceUseCase(userService)
@@ -57,7 +60,7 @@ func NewHTTPServer(cfg *config.Config, db *sql.DB) *echo.Echo {
 	api.POST("/users/login", userHandler.Login)
 
 	protected := api.Group("")
-	protected.Use(customMiddleware.AuthMiddleware())
+	protected.Use(customMiddleware.AuthMiddleware(tokens))
 
 	protected.PUT("/users/profile", userHandler.UpdateProfile)
 	protected.POST("/users/follow", userHandler.FollowUser)

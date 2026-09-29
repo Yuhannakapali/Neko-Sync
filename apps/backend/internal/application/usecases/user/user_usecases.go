@@ -30,12 +30,17 @@ func (uc *CreateUserUseCase) Execute(ctx context.Context, req dto.CreateUserRequ
 	}, nil
 }
 
-type AuthenticateUserUseCase struct {
-	svc userDomain.ServiceInterface
+type TokenIssuer interface {
+	Issue(userID string) (string, error)
 }
 
-func NewAuthenticateUserUseCase(svc userDomain.ServiceInterface) *AuthenticateUserUseCase {
-	return &AuthenticateUserUseCase{svc: svc}
+type AuthenticateUserUseCase struct {
+	svc    userDomain.ServiceInterface
+	tokens TokenIssuer
+}
+
+func NewAuthenticateUserUseCase(svc userDomain.ServiceInterface, tokens TokenIssuer) *AuthenticateUserUseCase {
+	return &AuthenticateUserUseCase{svc: svc, tokens: tokens}
 }
 
 func (uc *AuthenticateUserUseCase) Execute(ctx context.Context, req dto.LoginRequest) (*dto.LoginResponse, error) {
@@ -44,8 +49,10 @@ func (uc *AuthenticateUserUseCase) Execute(ctx context.Context, req dto.LoginReq
 		return nil, fmt.Errorf("authentication failed: %w", err)
 	}
 
-	// TODO: Generate real JWT token
-	token := "jwt-token-placeholder"
+	token, err := uc.tokens.Issue(string(u.ID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to issue token: %w", err)
+	}
 
 	return &dto.LoginResponse{
 		User: dto.UserResponse{
